@@ -103,21 +103,48 @@ jobs:
         run: |
           python3 scripts/check_release.py "$RELEASE_TAG"
           # For annotated tags GITHUB_SHA is the tag-object hash, not the
-          # commit.  Resolve to the actual commit so the comparison matches
+          # commit. Resolve to the actual commit so the comparison matches
           # what Build-Portable.ps1 wrote via `git rev-parse HEAD`.
           EXPECTED_COMMIT="$(git rev-parse HEAD)"
           export EXPECTED_COMMIT
           python3 - <<'PY'
-          import hashlib,json,os,pathlib,zipfile
-          root=pathlib.Path('release-assets')
-          archive=next(root.glob('*.zip'))
-          expected=pathlib.Path(str(archive)+'.sha256').read_text().split()[0]
-          assert hashlib.sha256(archive.read_bytes()).hexdigest()==expected
+          import hashlib, json, os, pathlib, zipfile
+
+          root = pathlib.Path("release-assets")
+          archives = sorted(root.glob("*.zip"))
+          if len(archives) != 1:
+              raise SystemExit(f"Expected exactly one portable ZIP in {root}, found {len(archives)}")
+
+          archive = archives[0]
+          checksum_path = pathlib.Path(str(archive) + ".sha256")
+          if not checksum_path.is_file():
+              raise SystemExit(f"Missing checksum file: {checksum_path}")
+
+          checksum_fields = checksum_path.read_text().split()
+          if not checksum_fields:
+              raise SystemExit(f"Checksum file is empty: {checksum_path}")
+
+          expected = checksum_fields[0]
+          actual = hashlib.sha256(archive.read_bytes()).hexdigest()
+          if actual != expected:
+              raise SystemExit(f"ZIP SHA256 mismatch: expected {expected}, got {actual}")
+
           with zipfile.ZipFile(archive) as z:
-              name=next(n for n in z.namelist() if n.endswith('/package-manifest.json'))
-              manifest=json.loads(z.read(name))
-              assert manifest['build_commit']==os.environ['EXPECTED_COMMIT'],f"build_commit {manifest['build_commit']} != expected {os.environ['EXPECTED_COMMIT']}"
-              assert 'v'+manifest['version']==os.environ['RELEASE_TAG']
+              manifests = [
+                  n for n in z.namelist()
+                  if pathlib.PurePosixPath(n).name == "package-manifest.json"
+              ]
+              if len(manifests) != 1:
+                  raise SystemExit(
+                      f"Expected exactly one package-manifest.json in {archive.name}, found {len(manifests)}"
+                  )
+              manifest = json.loads(z.read(manifests[0]))
+              assert manifest["build_commit"] == os.environ["EXPECTED_COMMIT"], (
+                  f"build_commit {manifest['build_commit']} != expected {os.environ['EXPECTED_COMMIT']}"
+              )
+              assert "v" + manifest["version"] == os.environ["RELEASE_TAG"]
+
+          print(f"Artifact validated: {archive.name}")
           PY
       - name: Publish verified prerelease
         env:
