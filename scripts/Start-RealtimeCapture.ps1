@@ -50,7 +50,7 @@ if (!$NoBackend) {
     $descriptor = @{schema_version=1;capture_id=[guid]::NewGuid().ToString();log_file='capture.jsonl'}
     [IO.File]::WriteAllText((Join-Path $runDir 'delivery.json'),($descriptor | ConvertTo-Json),[Text.UTF8Encoding]::new($false))
 }
-$captureArguments = @('--keys',$keys,'--catalog',(Join-Path $dataRoot 'materials.ru.json'),'--avatar-catalog',(Join-Path $dataRoot 'avatars.ru.json'),'--track-materials','--transport','--queue-capacity',[string]$QueueCapacity,'--output',$outputPath)
+$captureArguments = @('--keys',$keys,'--catalog',(Join-Path $dataRoot 'materials.ru.json'),'--avatar-catalog',(Join-Path $dataRoot 'avatars.ru.json'),'--achievement-catalog',(Join-Path $dataRoot 'achievements.ru.json'),'--track-materials','--transport','--queue-capacity',[string]$QueueCapacity,'--output',$outputPath)
 if ($PSBoundParameters.ContainsKey('ControlRunId')) {
     $controlDir=Join-Path $dataRoot ('auto-capture/runs/'+$ControlRunId.ToString())
     if (!(Test-Path -LiteralPath $controlDir -PathType Container)) { throw 'Control run directory is missing.' }
