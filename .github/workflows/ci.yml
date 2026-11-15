@@ -102,6 +102,11 @@ jobs:
           RELEASE_TAG: ${{ github.ref_name }}
         run: |
           python3 scripts/check_release.py "$RELEASE_TAG"
+          # For annotated tags GITHUB_SHA is the tag-object hash, not the
+          # commit.  Resolve to the actual commit so the comparison matches
+          # what Build-Portable.ps1 wrote via `git rev-parse HEAD`.
+          EXPECTED_COMMIT="$(git rev-parse HEAD)"
+          export EXPECTED_COMMIT
           python3 - <<'PY'
           import hashlib,json,os,pathlib,zipfile
           root=pathlib.Path('release-assets')
@@ -111,7 +116,7 @@ jobs:
           with zipfile.ZipFile(archive) as z:
               name=next(n for n in z.namelist() if n.endswith('/package-manifest.json'))
               manifest=json.loads(z.read(name))
-              assert manifest['build_commit']==os.environ['GITHUB_SHA']
+              assert manifest['build_commit']==os.environ['EXPECTED_COMMIT'],f"build_commit {manifest['build_commit']} != expected {os.environ['EXPECTED_COMMIT']}"
               assert 'v'+manifest['version']==os.environ['RELEASE_TAG']
           PY
       - name: Publish verified prerelease
