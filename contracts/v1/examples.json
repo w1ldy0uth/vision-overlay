@@ -1,0 +1,848 @@
+{
+  "description": "Synthetic contract examples; not a real capture and not an implementation of the state reducer.",
+  "ordered_scenario": [
+    {
+      "name": "capture_start",
+      "event": {
+        "contract_version": 1,
+        "capture_id": "6861f116-3e57-53b5-985f-394a10616f71",
+        "source_sequence": "1",
+        "epoch": null,
+        "profile": null,
+        "source": {
+          "producer": "capture-adapter",
+          "producer_version": "example",
+          "protocol_version": "7.2",
+          "adapter_revision": "contract-v1-example",
+          "mode": "live"
+        },
+        "observed_at": "2026-11-12T12:00:01Z",
+        "source_elapsed_ms": "1000",
+        "kind": "capture.opened",
+        "payload": {
+          "configuration": {
+            "raw_recording": "ring"
+          }
+        }
+      }
+    },
+    {
+      "name": "first_login",
+      "event": {
+        "contract_version": 1,
+        "capture_id": "6861f116-3e57-53b5-985f-394a10616f71",
+        "source_sequence": "2",
+        "epoch": "1",
+        "profile": null,
+        "source": {
+          "producer": "capture-adapter",
+          "producer_version": "example",
+          "protocol_version": "7.2",
+          "adapter_revision": "contract-v1-example",
+          "mode": "live"
+        },
+        "observed_at": "2026-11-12T12:00:02Z",
+        "source_elapsed_ms": "2000",
+        "kind": "session.opened",
+        "payload": {
+          "reason": "handshake"
+        }
+      }
+    },
+    {
+      "name": "bind_europe",
+      "event": {
+        "contract_version": 1,
+        "capture_id": "6861f116-3e57-53b5-985f-394a10616f71",
+        "source_sequence": "3",
+        "epoch": "1",
+        "profile": {
+          "game_id": "genshin",
+          "account_namespace": "hk4e_global",
+          "server_region": "os_euro",
+          "uid": "100000001"
+        },
+        "source": {
+          "producer": "capture-adapter",
+          "producer_version": "example",
+          "protocol_version": "7.2",
+          "adapter_revision": "contract-v1-example",
+          "mode": "live"
+        },
+        "observed_at": "2026-11-12T12:00:03Z",
+        "source_elapsed_ms": "3000",
+        "kind": "identity.confirmed",
+        "payload": {
+          "evidence": {
+            "uid_source": "login_packet",
+            "region_source": "user_confirmed_session",
+            "login_verified": true
+          }
+        }
+      }
+    },
+    {
+      "name": "inventory_baseline",
+      "event": {
+        "contract_version": 1,
+        "capture_id": "6861f116-3e57-53b5-985f-394a10616f71",
+        "source_sequence": "4",
+        "epoch": "1",
+        "profile": {
+          "game_id": "genshin",
+          "account_namespace": "hk4e_global",
+          "server_region": "os_euro",
+          "uid": "100000001"
+        },
+        "source": {
+          "producer": "capture-adapter",
+          "producer_version": "example",
+          "protocol_version": "7.2",
+          "adapter_revision": "contract-v1-example",
+          "mode": "live"
+        },
+        "observed_at": "2026-11-12T12:00:04Z",
+        "source_elapsed_ms": "4000",
+        "kind": "state.snapshot",
+        "payload": {
+          "snapshot_id": "e49c5510-152d-5734-9002-105e0659a114",
+          "collections": [
+            {
+              "name": "material_stacks",
+              "scope": "full",
+              "verified_fields": [
+                "item_id",
+                "count"
+              ],
+              "live_fields": [
+                "item_id",
+                "count"
+              ],
+              "entities": [
+                {
+                  "entity_key": "18446744073709551614",
+                  "values": {
+                    "item_id": 100002,
+                    "count": 10
+                  }
+                }
+              ]
+            },
+            {
+              "name": "weapons",
+              "scope": "full",
+              "verified_fields": [
+                "item_id",
+                "level"
+              ],
+              "live_fields": [
+                "item_id",
+                "level"
+              ],
+              "entities": []
+            }
+          ],
+          "evidence": {
+            "synthetic": true
+          }
+        }
+      }
+    },
+    {
+      "name": "pickup_absolute",
+      "event": {
+        "contract_version": 1,
+        "capture_id": "6861f116-3e57-53b5-985f-394a10616f71",
+        "source_sequence": "5",
+        "epoch": "1",
+        "profile": {
+          "game_id": "genshin",
+          "account_namespace": "hk4e_global",
+          "server_region": "os_euro",
+          "uid": "100000001"
+        },
+        "source": {
+          "producer": "capture-adapter",
+          "producer_version": "example",
+          "protocol_version": "7.2",
+          "adapter_revision": "contract-v1-example",
+          "mode": "live"
+        },
+        "observed_at": "2026-11-12T12:00:05Z",
+        "source_elapsed_ms": "5000",
+        "kind": "state.batch",
+        "payload": {
+          "operations": [
+            {
+              "collection": "material_stacks",
+              "entity_key": "18446744073709551614",
+              "action": "set",
+              "values": {
+                "count": 11
+              },
+              "expected": {
+                "count": 10
+              }
+            }
+          ],
+          "evidence": {
+            "synthetic": true
+          }
+        }
+      }
+    },
+    {
+      "name": "new_weapon",
+      "event": {
+        "contract_version": 1,
+        "capture_id": "6861f116-3e57-53b5-985f-394a10616f71",
+        "source_sequence": "6",
+        "epoch": "1",
+        "profile": {
+          "game_id": "genshin",
+          "account_namespace": "hk4e_global",
+          "server_region": "os_euro",
+          "uid": "100000001"
+        },
+        "source": {
+          "producer": "capture-adapter",
+          "producer_version": "example",
+          "protocol_version": "7.2",
+          "adapter_revision": "contract-v1-example",
+          "mode": "live"
+        },
+        "observed_at": "2026-11-12T12:00:06Z",
+        "source_elapsed_ms": "6000",
+        "kind": "state.batch",
+        "payload": {
+          "operations": [
+            {
+              "collection": "weapons",
+              "entity_key": "18446744073709551615",
+              "action": "set",
+              "values": {
+                "item_id": 11101,
+                "level": 1
+              },
+              "expected": null
+            }
+          ],
+          "evidence": {
+            "synthetic": true
+          }
+        }
+      }
+    },
+    {
+      "name": "weapon_level",
+      "event": {
+        "contract_version": 1,
+        "capture_id": "6861f116-3e57-53b5-985f-394a10616f71",
+        "source_sequence": "7",
+        "epoch": "1",
+        "profile": {
+          "game_id": "genshin",
+          "account_namespace": "hk4e_global",
+          "server_region": "os_euro",
+          "uid": "100000001"
+        },
+        "source": {
+          "producer": "capture-adapter",
+          "producer_version": "example",
+          "protocol_version": "7.2",
+          "adapter_revision": "contract-v1-example",
+          "mode": "live"
+        },
+        "observed_at": "2026-11-12T12:00:07Z",
+        "source_elapsed_ms": "7000",
+        "kind": "state.batch",
+        "payload": {
+          "operations": [
+            {
+              "collection": "weapons",
+              "entity_key": "18446744073709551615",
+              "action": "set",
+              "values": {
+                "level": 3
+              },
+              "expected": {
+                "level": 1
+              }
+            }
+          ],
+          "evidence": {
+            "synthetic": true
+          }
+        }
+      }
+    },
+    {
+      "name": "weapon_consumed",
+      "event": {
+        "contract_version": 1,
+        "capture_id": "6861f116-3e57-53b5-985f-394a10616f71",
+        "source_sequence": "8",
+        "epoch": "1",
+        "profile": {
+          "game_id": "genshin",
+          "account_namespace": "hk4e_global",
+          "server_region": "os_euro",
+          "uid": "100000001"
+        },
+        "source": {
+          "producer": "capture-adapter",
+          "producer_version": "example",
+          "protocol_version": "7.2",
+          "adapter_revision": "contract-v1-example",
+          "mode": "live"
+        },
+        "observed_at": "2026-11-12T12:00:08Z",
+        "source_elapsed_ms": "8000",
+        "kind": "state.batch",
+        "payload": {
+          "operations": [
+            {
+              "collection": "weapons",
+              "entity_key": "18446744073709551615",
+              "action": "delete",
+              "values": {},
+              "expected": {
+                "item_id": 11101
+              }
+            }
+          ],
+          "evidence": {
+            "synthetic": true
+          }
+        }
+      }
+    },
+    {
+      "name": "capture_gap",
+      "event": {
+        "contract_version": 1,
+        "capture_id": "6861f116-3e57-53b5-985f-394a10616f71",
+        "source_sequence": "9",
+        "epoch": "1",
+        "profile": {
+          "game_id": "genshin",
+          "account_namespace": "hk4e_global",
+          "server_region": "os_euro",
+          "uid": "100000001"
+        },
+        "source": {
+          "producer": "capture-adapter",
+          "producer_version": "example",
+          "protocol_version": "7.2",
+          "adapter_revision": "contract-v1-example",
+          "mode": "live"
+        },
+        "observed_at": "2026-11-12T12:00:09Z",
+        "source_elapsed_ms": "9000",
+        "kind": "state.invalidated",
+        "payload": {
+          "collections": [
+            "material_stacks",
+            "weapons"
+          ],
+          "reason": "capture_queue_overflow",
+          "requires_snapshot": true
+        }
+      }
+    },
+    {
+      "name": "new_baseline_after_gap",
+      "event": {
+        "contract_version": 1,
+        "capture_id": "6861f116-3e57-53b5-985f-394a10616f71",
+        "source_sequence": "10",
+        "epoch": "1",
+        "profile": {
+          "game_id": "genshin",
+          "account_namespace": "hk4e_global",
+          "server_region": "os_euro",
+          "uid": "100000001"
+        },
+        "source": {
+          "producer": "capture-adapter",
+          "producer_version": "example",
+          "protocol_version": "7.2",
+          "adapter_revision": "contract-v1-example",
+          "mode": "live"
+        },
+        "observed_at": "2026-11-12T12:00:10Z",
+        "source_elapsed_ms": "10000",
+        "kind": "state.snapshot",
+        "payload": {
+          "snapshot_id": "ffd0ba0d-c86b-5c09-af98-89ab2fffaadc",
+          "collections": [
+            {
+              "name": "material_stacks",
+              "scope": "full",
+              "verified_fields": [
+                "item_id",
+                "count"
+              ],
+              "live_fields": [
+                "item_id",
+                "count"
+              ],
+              "entities": [
+                {
+                  "entity_key": "18446744073709551614",
+                  "values": {
+                    "item_id": 100002,
+                    "count": 12
+                  }
+                }
+              ]
+            },
+            {
+              "name": "weapons",
+              "scope": "full",
+              "verified_fields": [
+                "item_id",
+                "level"
+              ],
+              "live_fields": [
+                "item_id",
+                "level"
+              ],
+              "entities": []
+            }
+          ],
+          "evidence": {
+            "synthetic": true
+          }
+        }
+      }
+    },
+    {
+      "name": "switch_server",
+      "event": {
+        "contract_version": 1,
+        "capture_id": "6861f116-3e57-53b5-985f-394a10616f71",
+        "source_sequence": "11",
+        "epoch": "2",
+        "profile": null,
+        "source": {
+          "producer": "capture-adapter",
+          "producer_version": "example",
+          "protocol_version": "7.2",
+          "adapter_revision": "contract-v1-example",
+          "mode": "live"
+        },
+        "observed_at": "2026-11-12T12:00:11Z",
+        "source_elapsed_ms": "11000",
+        "kind": "session.opened",
+        "payload": {
+          "reason": "handshake"
+        }
+      }
+    },
+    {
+      "name": "bind_asia",
+      "event": {
+        "contract_version": 1,
+        "capture_id": "6861f116-3e57-53b5-985f-394a10616f71",
+        "source_sequence": "12",
+        "epoch": "2",
+        "profile": {
+          "game_id": "genshin",
+          "account_namespace": "hk4e_global",
+          "server_region": "os_asia",
+          "uid": "100000002"
+        },
+        "source": {
+          "producer": "capture-adapter",
+          "producer_version": "example",
+          "protocol_version": "7.2",
+          "adapter_revision": "contract-v1-example",
+          "mode": "live"
+        },
+        "observed_at": "2026-11-12T12:00:12Z",
+        "source_elapsed_ms": "12000",
+        "kind": "identity.confirmed",
+        "payload": {
+          "evidence": {
+            "uid_source": "login_packet",
+            "region_source": "user_confirmed_session",
+            "login_verified": true
+          }
+        }
+      }
+    },
+    {
+      "name": "asia_snapshot",
+      "event": {
+        "contract_version": 1,
+        "capture_id": "6861f116-3e57-53b5-985f-394a10616f71",
+        "source_sequence": "13",
+        "epoch": "2",
+        "profile": {
+          "game_id": "genshin",
+          "account_namespace": "hk4e_global",
+          "server_region": "os_asia",
+          "uid": "100000002"
+        },
+        "source": {
+          "producer": "capture-adapter",
+          "producer_version": "example",
+          "protocol_version": "7.2",
+          "adapter_revision": "contract-v1-example",
+          "mode": "live"
+        },
+        "observed_at": "2026-11-12T12:00:13Z",
+        "source_elapsed_ms": "13000",
+        "kind": "state.snapshot",
+        "payload": {
+          "snapshot_id": "414851e7-5f23-58a8-baae-8611e4f28527",
+          "collections": [
+            {
+              "name": "material_stacks",
+              "scope": "full",
+              "verified_fields": [
+                "item_id",
+                "count"
+              ],
+              "live_fields": [
+                "item_id",
+                "count"
+              ],
+              "entities": []
+            }
+          ],
+          "evidence": {
+            "synthetic": true
+          }
+        }
+      }
+    },
+    {
+      "name": "leave_asia",
+      "event": {
+        "contract_version": 1,
+        "capture_id": "6861f116-3e57-53b5-985f-394a10616f71",
+        "source_sequence": "14",
+        "epoch": "2",
+        "profile": {
+          "game_id": "genshin",
+          "account_namespace": "hk4e_global",
+          "server_region": "os_asia",
+          "uid": "100000002"
+        },
+        "source": {
+          "producer": "capture-adapter",
+          "producer_version": "example",
+          "protocol_version": "7.2",
+          "adapter_revision": "contract-v1-example",
+          "mode": "live"
+        },
+        "observed_at": "2026-11-12T12:00:14Z",
+        "source_elapsed_ms": "14000",
+        "kind": "session.closed",
+        "payload": {
+          "reason": "disconnect"
+        }
+      }
+    },
+    {
+      "name": "return_europe",
+      "event": {
+        "contract_version": 1,
+        "capture_id": "6861f116-3e57-53b5-985f-394a10616f71",
+        "source_sequence": "15",
+        "epoch": "3",
+        "profile": null,
+        "source": {
+          "producer": "capture-adapter",
+          "producer_version": "example",
+          "protocol_version": "7.2",
+          "adapter_revision": "contract-v1-example",
+          "mode": "live"
+        },
+        "observed_at": "2026-11-12T12:00:15Z",
+        "source_elapsed_ms": "15000",
+        "kind": "session.opened",
+        "payload": {
+          "reason": "handshake"
+        }
+      }
+    },
+    {
+      "name": "bind_europe_again",
+      "event": {
+        "contract_version": 1,
+        "capture_id": "6861f116-3e57-53b5-985f-394a10616f71",
+        "source_sequence": "16",
+        "epoch": "3",
+        "profile": {
+          "game_id": "genshin",
+          "account_namespace": "hk4e_global",
+          "server_region": "os_euro",
+          "uid": "100000001"
+        },
+        "source": {
+          "producer": "capture-adapter",
+          "producer_version": "example",
+          "protocol_version": "7.2",
+          "adapter_revision": "contract-v1-example",
+          "mode": "live"
+        },
+        "observed_at": "2026-11-12T12:00:16Z",
+        "source_elapsed_ms": "16000",
+        "kind": "identity.confirmed",
+        "payload": {
+          "evidence": {
+            "uid_source": "login_packet",
+            "region_source": "user_confirmed_session",
+            "login_verified": true
+          }
+        }
+      }
+    },
+    {
+      "name": "europe_restored",
+      "event": {
+        "contract_version": 1,
+        "capture_id": "6861f116-3e57-53b5-985f-394a10616f71",
+        "source_sequence": "17",
+        "epoch": "3",
+        "profile": {
+          "game_id": "genshin",
+          "account_namespace": "hk4e_global",
+          "server_region": "os_euro",
+          "uid": "100000001"
+        },
+        "source": {
+          "producer": "capture-adapter",
+          "producer_version": "example",
+          "protocol_version": "7.2",
+          "adapter_revision": "contract-v1-example",
+          "mode": "live"
+        },
+        "observed_at": "2026-11-12T12:00:17Z",
+        "source_elapsed_ms": "17000",
+        "kind": "state.snapshot",
+        "payload": {
+          "snapshot_id": "0adc2855-40d8-5bea-9000-0f45d92f683b",
+          "collections": [
+            {
+              "name": "material_stacks",
+              "scope": "full",
+              "verified_fields": [
+                "item_id",
+                "count"
+              ],
+              "live_fields": [
+                "item_id",
+                "count"
+              ],
+              "entities": [
+                {
+                  "entity_key": "18446744073709551614",
+                  "values": {
+                    "item_id": 100002,
+                    "count": 12
+                  }
+                }
+              ]
+            }
+          ],
+          "evidence": {
+            "synthetic": true
+          }
+        }
+      }
+    },
+    {
+      "name": "automatic_shutdown",
+      "event": {
+        "contract_version": 1,
+        "capture_id": "6861f116-3e57-53b5-985f-394a10616f71",
+        "source_sequence": "18",
+        "epoch": "3",
+        "profile": {
+          "game_id": "genshin",
+          "account_namespace": "hk4e_global",
+          "server_region": "os_euro",
+          "uid": "100000001"
+        },
+        "source": {
+          "producer": "capture-adapter",
+          "producer_version": "example",
+          "protocol_version": "7.2",
+          "adapter_revision": "contract-v1-example",
+          "mode": "live"
+        },
+        "observed_at": "2026-11-12T12:00:18Z",
+        "source_elapsed_ms": "18000",
+        "kind": "capture.closed",
+        "payload": {
+          "reason": "game_exited"
+        }
+      }
+    }
+  ],
+  "delivery_cases": [
+    {
+      "name": "same_key_same_payload",
+      "event": {
+        "contract_version": 1,
+        "capture_id": "6861f116-3e57-53b5-985f-394a10616f71",
+        "source_sequence": "5",
+        "epoch": "1",
+        "profile": {
+          "game_id": "genshin",
+          "account_namespace": "hk4e_global",
+          "server_region": "os_euro",
+          "uid": "100000001"
+        },
+        "source": {
+          "producer": "capture-adapter",
+          "producer_version": "example",
+          "protocol_version": "7.2",
+          "adapter_revision": "contract-v1-example",
+          "mode": "live"
+        },
+        "observed_at": "2026-11-12T12:00:05Z",
+        "source_elapsed_ms": "5000",
+        "kind": "state.batch",
+        "payload": {
+          "operations": [
+            {
+              "collection": "material_stacks",
+              "entity_key": "18446744073709551614",
+              "action": "set",
+              "values": {
+                "count": 11
+              },
+              "expected": {
+                "count": 10
+              }
+            }
+          ],
+          "evidence": {
+            "synthetic": true
+          }
+        }
+      },
+      "expected": "duplicate_ack_no_revision_change"
+    },
+    {
+      "name": "same_key_changed_payload",
+      "event": {
+        "contract_version": 1,
+        "capture_id": "6861f116-3e57-53b5-985f-394a10616f71",
+        "source_sequence": "5",
+        "epoch": "1",
+        "profile": {
+          "game_id": "genshin",
+          "account_namespace": "hk4e_global",
+          "server_region": "os_euro",
+          "uid": "100000001"
+        },
+        "source": {
+          "producer": "capture-adapter",
+          "producer_version": "example",
+          "protocol_version": "7.2",
+          "adapter_revision": "contract-v1-example",
+          "mode": "live"
+        },
+        "observed_at": "2026-11-12T12:00:05Z",
+        "source_elapsed_ms": "5000",
+        "kind": "state.batch",
+        "payload": {
+          "operations": [
+            {
+              "collection": "material_stacks",
+              "entity_key": "18446744073709551614",
+              "action": "set",
+              "values": {
+                "count": 999
+              },
+              "expected": {
+                "count": 10
+              }
+            }
+          ],
+          "evidence": {
+            "synthetic": true
+          }
+        }
+      },
+      "expected": "409_event_conflict_no_state_change"
+    },
+    {
+      "name": "missing_predecessor",
+      "event": {
+        "contract_version": 1,
+        "capture_id": "6861f116-3e57-53b5-985f-394a10616f71",
+        "source_sequence": "7",
+        "epoch": "1",
+        "profile": {
+          "game_id": "genshin",
+          "account_namespace": "hk4e_global",
+          "server_region": "os_euro",
+          "uid": "100000001"
+        },
+        "source": {
+          "producer": "capture-adapter",
+          "producer_version": "example",
+          "protocol_version": "7.2",
+          "adapter_revision": "contract-v1-example",
+          "mode": "live"
+        },
+        "observed_at": "2026-11-12T12:00:07Z",
+        "source_elapsed_ms": "7000",
+        "kind": "state.batch",
+        "payload": {
+          "operations": [
+            {
+              "collection": "weapons",
+              "entity_key": "18446744073709551615",
+              "action": "set",
+              "values": {
+                "level": 3
+              },
+              "expected": {
+                "level": 1
+              }
+            }
+          ],
+          "evidence": {
+            "synthetic": true
+          }
+        }
+      },
+      "when": "sequence 6 has not been received",
+      "expected": "409_sequence_gap_expected_6"
+    }
+  ],
+  "semantic_cases": [
+    {
+      "name": "patch_after_gap",
+      "reference_event": "pickup_absolute",
+      "when": "domain is invalidated and no new snapshot exists",
+      "expected": "rejected_resync_required_no_quantity_update"
+    },
+    {
+      "name": "unknown_profile",
+      "reference_event": "inventory_baseline",
+      "when": "identity not bound for epoch",
+      "expected": "stage_only_do_not_update_previous_profile"
+    },
+    {
+      "name": "late_old_epoch",
+      "reference_event": "pickup_absolute",
+      "when": "new nonduplicate record is submitted for closed epoch 1",
+      "expected": "epoch_closed_no_current_state_change"
+    },
+    {
+      "name": "partial_snapshot",
+      "reference_event": "inventory_baseline",
+      "when": "scope changed to partial and a previously stored entity is omitted",
+      "expected": "keep_omitted_entity_historical_unconfirmed_exclude_from_trusted_total"
+    }
+  ]
+}

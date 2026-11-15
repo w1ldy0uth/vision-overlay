@@ -1,0 +1,32 @@
+[package]
+name = "capture-probe"
+version.workspace = true
+edition = "2024"
+license = "Apache-2.0"
+publish = false
+
+[dependencies]
+anyhow = "1"
+auto-artifactarium = { git = "https://github.com/konkers/auto-artifactarium", rev = "7dafbf0af0bfece23e46382dd3f991d39a5436ac" }
+base64 = "0.22"
+byteorder = "1.5"
+clap = { version = "4", features = ["derive"] }
+futures = "0.3"
+pcap-file = "=2.0.0"
+protobuf = "=3.7.2"
+etherparse = "0.16"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+sha2 = "0.10"
+flate2 = "1"
+tokio = { version = "1", features = ["macros", "rt-multi-thread", "signal", "sync", "time"] }
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+tracing = "0.1"
+time = { version = "0.3", features = ["formatting", "local-offset"] }
+
+[target.'cfg(windows)'.dependencies]
+pktmon = { version = "=0.6.2", features = ["tokio"] }
+windows-sys = { version = "0.61", features = ["Win32_Foundation", "Win32_System_Diagnostics_ToolHelp", "Win32_System_Threading", "Win32_System_Memory", "Win32_Security"] }
+
+[dev-dependencies]
+tokio = { version = "1", features = ["test-util"] }

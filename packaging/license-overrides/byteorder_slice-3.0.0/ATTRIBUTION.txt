@@ -1,0 +1,7 @@
+Package: byteorder_slice 3.0.0
+Upstream: https://github.com/courvoif/byteorder_slice
+Revision: 044018a45be8f549e2ecf222d3edf609c1319a22
+Declared SPDX license: MIT
+License used in this distribution: MIT
+Authors: courvoif <courvoif@pm.me>
+The published crate has no separate root license file; see the pinned upstream README and license declaration.

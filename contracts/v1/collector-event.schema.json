@@ -1,0 +1,766 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://vision-overlay.invalid/contracts/v1/collector-event.schema.json",
+  "title": "Vision Overlay collector contract v1 (structural validation)",
+  "description": "See docs/WEB_APP_CONTRACTS_V1.md for required semantic constraints.",
+  "type": "object",
+  "properties": {
+    "contract_version": {
+      "const": 1
+    },
+    "capture_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "source_sequence": {
+      "type": "string",
+      "pattern": "^[1-9][0-9]*$"
+    },
+    "epoch": {
+      "anyOf": [
+        {
+          "type": "string",
+          "pattern": "^[1-9][0-9]*$"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "profile": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/profile"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "source": {
+      "type": "object",
+      "properties": {
+        "producer": {
+          "type": "string",
+          "minLength": 1
+        },
+        "producer_version": {
+          "type": "string",
+          "minLength": 1
+        },
+        "protocol_version": {
+          "type": "string",
+          "minLength": 1
+        },
+        "adapter_revision": {
+          "type": "string",
+          "minLength": 1
+        },
+        "mode": {
+          "enum": [
+            "live",
+            "import",
+            "replay"
+          ]
+        }
+      },
+      "required": [
+        "producer",
+        "producer_version",
+        "protocol_version",
+        "adapter_revision",
+        "mode"
+      ],
+      "additionalProperties": false
+    },
+    "observed_at": {
+      "anyOf": [
+        {
+          "type": "string",
+          "format": "date-time"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "source_elapsed_ms": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/decimal"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "kind": {
+      "enum": [
+        "capture.opened",
+        "session.opened",
+        "identity.confirmed",
+        "state.snapshot",
+        "state.batch",
+        "state.invalidated",
+        "session.closed",
+        "capture.closed",
+        "diagnostic.notice",
+        "wish.observed"
+      ]
+    },
+    "payload": {
+      "type": "object"
+    }
+  },
+  "required": [
+    "contract_version",
+    "capture_id",
+    "source_sequence",
+    "epoch",
+    "profile",
+    "source",
+    "observed_at",
+    "source_elapsed_ms",
+    "kind",
+    "payload"
+  ],
+  "additionalProperties": false,
+  "$defs": {
+    "profile": {
+      "type": "object",
+      "properties": {
+        "game_id": {
+          "const": "genshin"
+        },
+        "account_namespace": {
+          "type": "string",
+          "minLength": 1
+        },
+        "server_region": {
+          "enum": [
+            "os_euro",
+            "os_asia",
+            "os_usa",
+            "os_cht"
+          ]
+        },
+        "uid": {
+          "type": "string",
+          "pattern": "^[1-9][0-9]{5,19}$"
+        }
+      },
+      "required": [
+        "game_id",
+        "account_namespace",
+        "server_region",
+        "uid"
+      ],
+      "additionalProperties": false
+    },
+    "decimal": {
+      "type": "string",
+      "pattern": "^(0|[1-9][0-9]*)$"
+    },
+    "entity": {
+      "type": "object",
+      "properties": {
+        "entity_key": {
+          "type": "string",
+          "minLength": 1
+        },
+        "values": {
+          "type": "object"
+        }
+      },
+      "required": [
+        "entity_key",
+        "values"
+      ],
+      "additionalProperties": false
+    },
+    "collection": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "enum": [
+            "material_stacks",
+            "weapons",
+            "artifacts",
+            "furniture",
+            "cosmetics",
+            "unknown_items",
+            "characters",
+            "wallet",
+            "adventure",
+            "achievements",
+            "teams",
+            "player_profile",
+            "wish_history",
+            "traveler_depots"
+          ]
+        },
+        "scope": {
+          "enum": [
+            "full",
+            "partial",
+            "unverified"
+          ]
+        },
+        "verified_fields": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "uniqueItems": true
+        },
+        "live_fields": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "uniqueItems": true
+        },
+        "entities": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/entity"
+          },
+          "minItems": 0
+        }
+      },
+      "required": [
+        "name",
+        "scope",
+        "verified_fields",
+        "live_fields",
+        "entities"
+      ],
+      "additionalProperties": false
+    },
+    "operation": {
+      "type": "object",
+      "properties": {
+        "collection": {
+          "enum": [
+            "material_stacks",
+            "weapons",
+            "artifacts",
+            "furniture",
+            "cosmetics",
+            "unknown_items",
+            "characters",
+            "wallet",
+            "adventure",
+            "achievements",
+            "teams",
+            "player_profile",
+            "wish_history",
+            "traveler_depots"
+          ]
+        },
+        "entity_key": {
+          "type": "string",
+          "minLength": 1
+        },
+        "action": {
+          "enum": [
+            "set",
+            "delete"
+          ]
+        },
+        "values": {
+          "type": "object"
+        },
+        "expected": {
+          "anyOf": [
+            {
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "collection",
+        "entity_key",
+        "action",
+        "values",
+        "expected"
+      ],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "action": {
+                "const": "delete"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "values": {
+                "maxProperties": 0
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "values": {
+                "minProperties": 1
+              }
+            }
+          }
+        }
+      ]
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "kind": {
+            "const": "capture.opened"
+          }
+        },
+        "required": [
+          "kind"
+        ]
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "type": "object",
+            "properties": {
+              "configuration": {
+                "type": "object"
+              }
+            },
+            "required": [
+              "configuration"
+            ],
+            "additionalProperties": false
+          },
+          "epoch": {
+            "type": "null"
+          },
+          "profile": {
+            "type": "null"
+          },
+          "source_sequence": {
+            "const": "1"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "kind": {
+            "const": "session.opened"
+          }
+        },
+        "required": [
+          "kind"
+        ]
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "type": "object",
+            "properties": {
+              "reason": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": [
+              "reason"
+            ],
+            "additionalProperties": false
+          },
+          "epoch": {
+            "type": "string",
+            "pattern": "^[1-9][0-9]*$"
+          },
+          "profile": {
+            "type": "null"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "kind": {
+            "const": "identity.confirmed"
+          }
+        },
+        "required": [
+          "kind"
+        ]
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "type": "object",
+            "properties": {
+              "evidence": {
+                "type": "object",
+                "properties": {
+                  "uid_source": {
+                    "enum": [
+                      "login_packet",
+                      "user_import"
+                    ]
+                  },
+                  "region_source": {
+                    "enum": [
+                      "verified_protocol_field",
+                      "user_confirmed_session",
+                      "uid_prefix",
+                      "user_import"
+                    ]
+                  },
+                  "login_verified": {
+                    "const": true
+                  }
+                },
+                "required": [
+                  "uid_source",
+                  "region_source",
+                  "login_verified"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "evidence"
+            ],
+            "additionalProperties": false
+          },
+          "epoch": {
+            "type": "string",
+            "pattern": "^[1-9][0-9]*$"
+          },
+          "profile": {
+            "$ref": "#/$defs/profile"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "kind": {
+            "const": "state.snapshot"
+          }
+        },
+        "required": [
+          "kind"
+        ]
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "type": "object",
+            "properties": {
+              "snapshot_id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "collections": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/collection"
+                },
+                "minItems": 1
+              },
+              "evidence": {
+                "type": "object"
+              }
+            },
+            "required": [
+              "snapshot_id",
+              "collections",
+              "evidence"
+            ],
+            "additionalProperties": false
+          },
+          "epoch": {
+            "type": "string",
+            "pattern": "^[1-9][0-9]*$"
+          },
+          "profile": {
+            "$ref": "#/$defs/profile"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "kind": {
+            "const": "state.batch"
+          }
+        },
+        "required": [
+          "kind"
+        ]
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "type": "object",
+            "properties": {
+              "operations": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/operation"
+                },
+                "minItems": 1
+              },
+              "evidence": {
+                "type": "object"
+              }
+            },
+            "required": [
+              "operations",
+              "evidence"
+            ],
+            "additionalProperties": false
+          },
+          "epoch": {
+            "type": "string",
+            "pattern": "^[1-9][0-9]*$"
+          },
+          "profile": {
+            "$ref": "#/$defs/profile"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "kind": {
+            "const": "state.invalidated"
+          }
+        },
+        "required": [
+          "kind"
+        ]
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "type": "object",
+            "properties": {
+              "collections": {
+                "type": "array",
+                "items": {
+                  "enum": [
+                    "material_stacks",
+                    "weapons",
+                    "artifacts",
+                    "furniture",
+                    "cosmetics",
+                    "unknown_items",
+                    "characters",
+                    "wallet",
+                    "adventure",
+                    "achievements",
+                    "teams",
+                    "player_profile",
+                    "wish_history",
+                    "traveler_depots"
+                  ]
+                },
+                "minItems": 1
+              },
+              "reason": {
+                "type": "string",
+                "minLength": 1
+              },
+              "requires_snapshot": {
+                "const": true
+              }
+            },
+            "required": [
+              "collections",
+              "reason",
+              "requires_snapshot"
+            ],
+            "additionalProperties": false
+          },
+          "epoch": {
+            "type": "string",
+            "pattern": "^[1-9][0-9]*$"
+          },
+          "profile": {
+            "$ref": "#/$defs/profile"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "kind": {
+            "const": "session.closed"
+          }
+        },
+        "required": [
+          "kind"
+        ]
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "type": "object",
+            "properties": {
+              "reason": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": [
+              "reason"
+            ],
+            "additionalProperties": false
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "kind": {
+            "const": "capture.closed"
+          }
+        },
+        "required": [
+          "kind"
+        ]
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "type": "object",
+            "properties": {
+              "reason": {
+                "enum": [
+                  "game_exited",
+                  "user",
+                  "deadline",
+                  "source_end"
+                ]
+              }
+            },
+            "required": [
+              "reason"
+            ],
+            "additionalProperties": false
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "kind": {
+            "const": "diagnostic.notice"
+          }
+        },
+        "required": [
+          "kind"
+        ]
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "type": "object",
+            "properties": {
+              "code": {
+                "type": "string",
+                "minLength": 1
+              },
+              "details": {
+                "type": "object"
+              }
+            },
+            "required": [
+              "code",
+              "details"
+            ],
+            "additionalProperties": false
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "kind": {
+            "const": "wish.observed"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "type": "object",
+            "required": [
+              "gacha_type",
+              "gacha_id",
+              "results"
+            ],
+            "properties": {
+              "gacha_type": {
+                "enum": [
+                  "100",
+                  "200",
+                  "301",
+                  "400",
+                  "302",
+                  "500"
+                ]
+              },
+              "gacha_id": {
+                "$ref": "#/$defs/decimal"
+              },
+              "results": {
+                "type": "array",
+                "minItems": 1,
+                "maxItems": 10,
+                "items": {
+                  "type": "object",
+                  "required": [
+                    "item_id",
+                    "count"
+                  ],
+                  "properties": {
+                    "item_id": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 4294967295
+                    },
+                    "count": {
+                      "const": 1
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              }
+            },
+            "additionalProperties": false
+          }
+        }
+      }
+    }
+  ]
+}

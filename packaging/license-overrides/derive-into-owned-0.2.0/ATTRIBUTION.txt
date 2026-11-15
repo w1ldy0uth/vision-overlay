@@ -1,0 +1,7 @@
+Package: derive-into-owned 0.2.0
+Upstream: https://github.com/koivunej/derive-into-owned
+Revision: 57d509eb8c3d4b4ad488517ca0594b91ed567625
+Declared SPDX license: MIT
+License used in this distribution: MIT
+Authors: Joonas Koivunen <joonas.koivunen@gmail.com>
+The published crate has no separate root license file; see the pinned upstream README and license declaration.

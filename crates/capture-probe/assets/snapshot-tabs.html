@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="ru"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Vision Overlay · Инвентарь и изменения</title>
+<style>
+:root{color-scheme:dark;font-family:Segoe UI,system-ui,sans-serif;background:#10161e;color:#e4eaf2}body{max-width:1180px;margin:auto;padding:36px 24px}h1{font-size:30px;margin:10px 0}p{color:#aab8c9;line-height:1.6}.brand{color:#85d9c2;font-size:12px;letter-spacing:3px}.notice{border-left:3px solid #d7ad66;padding:12px 18px;background:#201f20;color:#e6d5b8}.tools{display:flex;gap:12px;margin:24px 0 14px;flex-wrap:wrap}input,select{font:inherit;color:inherit;background:#1c2633;border:1px solid #3c4b60;border-radius:8px;padding:12px}input[type=search]{flex:1;min-width:200px}.check{display:flex;align-items:center;gap:8px}table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:12px 14px;border-bottom:1px solid #293442}th{color:#aab8c9;font-size:13px;position:sticky;top:0;background:#18212c}td:last-child,th:last-child{text-align:right}td:last-child{font-variant-numeric:tabular-nums;color:#85d9c2;font-weight:600}.id{color:#93a4b9;font-family:monospace;font-size:11px;overflow-wrap:anywhere}small{color:#93a4b9}footer{margin-top:24px;overflow-wrap:anywhere}button{font:inherit;background:#253c40;color:#d4eee7;border:1px solid #486965;border-radius:8px;padding:10px 14px;cursor:pointer}.table-wrap{overflow-x:auto}.tabs{display:flex;gap:8px;border-bottom:1px solid #344353;margin:24px 0}.tabs label{padding:14px 20px;cursor:pointer;border-bottom:3px solid transparent;color:#aab8c9}.tabs span{margin-left:8px;font-size:12px;color:#aab8c9}.tab-radio{position:absolute;width:1px;height:1px;clip-path:inset(50%);overflow:hidden}.tab-radio:focus-visible~.tabs{outline:2px solid #85d9c2}#tab-materials:checked~.tabs label[for=tab-materials],#tab-items:checked~.tabs label[for=tab-items]{color:#e4eaf2;border-color:#85d9c2;background:#18242e}#tab-materials:checked~.panels #items-panel,#tab-items:checked~.panels #materials-panel{display:none}#items-panel td:nth-child(4){font-size:13px;color:#aab8c9;max-width:300px}#items-panel td:nth-child(3){white-space:nowrap}
+.panels>section{display:none}#tab-materials:checked~.panels #materials-panel,#tab-items:checked~.panels #items-panel,#tab-history:checked~.panels #history-panel{display:block}#tab-history:checked~.tabs label[for=tab-history]{color:#e4eaf2;border-color:#85d9c2;background:#18242e}.tabs{flex-wrap:wrap}#materials-panel td:nth-child(n+3),#history-panel td:nth-child(n+4){font-variant-numeric:tabular-nums;text-align:right}#history-panel td:first-child{white-space:nowrap;font-family:monospace}
+</style>
+<div class="brand">VISION OVERLAY / CAPTURE PROBE</div><h1>Инвентарь и изменения</h1>
+<p class="notice" id="notice"><!--__NOTICE__--></p>
+<noscript><p>Поиск и сортировка требуют JavaScript. Вкладки и полные таблицы доступны без него; для поиска можно использовать Ctrl+F.</p></noscript>
+<input class="tab-radio" type="radio" name="inventory-tab" id="tab-materials" checked aria-label="Материалы">
+<input class="tab-radio" type="radio" name="inventory-tab" id="tab-items" aria-label="Предметы">
+<input class="tab-radio" type="radio" name="inventory-tab" id="tab-history" aria-label="История изменений">
+<nav class="tabs" aria-label="Разделы инвентаря"><label for="tab-materials">Материалы <span><!--__MATERIAL_COUNT__--></span></label><label for="tab-items">Предметы <span><!--__ITEM_COUNT__--></span></label><label for="tab-history">История изменений <span><!--__HISTORY_COUNT__--></span></label></nav>
+<main class="panels">
+<section id="materials-panel" aria-label="Материалы">
+<p id="summary"><!--__SUMMARY__--></p>
+<div class="tools"><input id="search" type="search" aria-label="Поиск материалов" placeholder="Название материала или ID…"><select id="sort" aria-label="Сортировка материалов"><option value="name">По названию</option><option value="count">По количеству</option><option value="id">По ID</option></select><button id="clear">Сбросить</button></div>
+<div class="tools"><label class="check"><input type="checkbox" id="unknown">Только без названия</label><label class="check"><input type="checkbox" id="changed">Только с изменениями</label></div><p id="shown" aria-live="polite"></p>
+<div class="table-wrap"><table><thead><tr><th>Материал</th><th>ID</th><th>В начале</th><th>В конце</th><th>Разница</th></tr></thead><tbody id="rows"><!--__ROWS__--></tbody></table></div>
+</section>
+<section id="items-panel" aria-label="Предметы">
+<p id="item-summary"><!--__ITEM_SUMMARY__--></p>
+<div class="tools"><input id="item-search" type="search" aria-label="Поиск предметов" placeholder="Название, ID или GUID экземпляра…"><select id="item-kind" aria-label="Тип предмета"><option value="">Все типы</option><option value="weapon">Оружие</option><option value="artifact">Артефакты</option><option value="furniture">Мебель</option><option value="unknown">Другое</option></select><select id="item-sort" aria-label="Сортировка предметов"><option value="name">По названию</option><option value="level">По уровню</option><option value="count">По количеству</option><option value="id">По ID</option></select><button id="item-clear">Сбросить</button></div>
+<label class="check"><input type="checkbox" id="item-unknown">Только без названия</label><p id="item-shown" aria-live="polite"></p>
+<div class="table-wrap"><table><thead><tr><th>Предмет / экземпляр</th><th>Тип</th><th>Уровень</th><th>Характеристики</th><th>Количество</th></tr></thead><tbody id="item-rows"><!--__ITEM_ROWS__--></tbody></table></div>
+</section>
+<section id="history-panel" aria-label="История изменений">
+<p><!--__HISTORY_SUMMARY__--></p>
+<div class="tools"><input id="history-search" type="search" aria-label="Поиск изменений" placeholder="Название материала или ID…"><button id="history-clear">Сбросить</button></div>
+<p id="history-shown" aria-live="polite"></p>
+<div class="table-wrap"><table><thead><tr><th>Время</th><th>Материал</th><th>ID</th><th>До</th><th>После</th><th>Изменение</th></tr></thead><tbody id="history-rows"><!--__HISTORY_ROWS__--></tbody></table></div>
+</section>
+</main><footer><small id="source"><!--__SOURCE__--></small></footer>
+<script>
+'use strict';
+const report=/*__REPORT__*/null;
+const $=id=>document.getElementById(id);
+const itemRows=report.item_rows||[];
+const history=report.history||[];
+const number=value=>value==null?'—':value.toLocaleString('ru');
+const signed=value=>value==null?'—':`${value>=0?'+':''}${number(value)}`;
+const elapsed=value=>value==null?'—':`${Math.floor(value/60000)}:${String(Math.floor(value/1000)%60).padStart(2,'0')}.${String(value%1000).padStart(3,'0')}`;
+const date=new Date(Number(report.observed_unix_ms));
+$('summary').textContent=`${report.rows.length.toLocaleString('ru')} материалов · ${report.unknown} без названия · ${Number.isNaN(date.getTime())?'Время неизвестно':date.toLocaleString('ru')} · локальная сессия ${report.session}`;
+$('source').textContent=`Названия: ${report.catalog.language} · ${report.catalog.source} · ревизия ${report.catalog.revision}. Отчёт работает локально, без сетевых запросов.`;
+function tableRows(target,rows,columns){
+ const fragment=document.createDocumentFragment();
+ for(const row of rows){const tr=document.createElement('tr');for(const text of columns(row)){const td=document.createElement('td');td.textContent=text;tr.append(td);}fragment.append(tr);}
+ if(!rows.length){const tr=document.createElement('tr');const td=document.createElement('td');td.colSpan=target==='history-rows'?6:5;td.textContent='Совпадений нет';tr.append(td);fragment.append(tr);}
+ $(target).replaceChildren(fragment);
+}
+function render(){
+ const query=$('search').value.trim().toLocaleLowerCase('ru');
+ const rows=report.rows.filter(r=>(!$('unknown').checked||!r.name)&&(!$('changed').checked||r.updates>0)&&(!query||(r.name||'').toLocaleLowerCase('ru').includes(query)||String(r.item_id).includes(query)));
+ rows.sort((a,b)=>$('sort').value==='count'?(b.count??b.initial_count)-(a.count??a.initial_count)||a.item_id-b.item_id:$('sort').value==='id'?a.item_id-b.item_id:(a.name||'ЯЯЯ').localeCompare(b.name||'ЯЯЯ','ru')||a.item_id-b.item_id);
+ tableRows('rows',rows,r=>[r.name||'Неизвестный материал',r.item_id,number(r.initial_count),number(r.count),signed(r.delta)]);
+ $('shown').textContent=`Показано ${rows.length} из ${report.rows.length}`;
+}
+function renderHistory(){
+ const query=$('history-search').value.trim().toLocaleLowerCase('ru');
+ const rows=history.filter(r=>!query||`${r.name||''} ${r.item_id}`.toLocaleLowerCase('ru').includes(query));
+ tableRows('history-rows',rows,r=>[elapsed(r.source_elapsed_ms),r.name||'Неизвестный материал',r.item_id,number(r.previous_count),number(r.count),signed(r.delta)]);
+ $('history-shown').textContent=`Показано ${rows.length} из ${history.length} изменений`;
+}
+function renderItems(){
+ const query=$('item-search').value.trim().toLocaleLowerCase('ru');
+ const kind=$('item-kind').value;
+ const rows=itemRows.filter(r=>(!kind||r.kind===kind)&&(!$('item-unknown').checked||!r.name)&&(!query||`${r.name||''} ${r.item_id} ${r.guid}`.toLocaleLowerCase('ru').includes(query)));
+ const order=$('item-sort').value;
+ rows.sort((a,b)=>order==='level'?(b.level??-1)-(a.level??-1)||a.item_id-b.item_id:order==='count'?(b.count??-1)-(a.count??-1)||a.item_id-b.item_id:order==='id'?a.item_id-b.item_id:(a.name||'ЯЯЯ').localeCompare(b.name||'ЯЯЯ','ru')||a.item_id-b.item_id);
+ tableRows('item-rows',rows,r=>[`${r.name||'Неизвестный предмет'}\nID ${r.item_id} · ${r.guid}`,r.category,r.level_label,r.details||'—',r.count===null?'—':r.count.toLocaleString('ru')]);
+ $('item-shown').textContent=`Показано ${rows.length} из ${itemRows.length} экземпляров`;
+}
+$('search').addEventListener('input',render);$('sort').addEventListener('change',render);$('unknown').addEventListener('change',render);$('changed').addEventListener('change',render);$('clear').addEventListener('click',()=>{$('search').value='';$('unknown').checked=false;$('changed').checked=false;$('sort').value='name';render();});
+$('history-search').addEventListener('input',renderHistory);$('history-clear').addEventListener('click',()=>{$('history-search').value='';renderHistory();});
+$('item-search').addEventListener('input',renderItems);$('item-kind').addEventListener('change',renderItems);$('item-sort').addEventListener('change',renderItems);$('item-unknown').addEventListener('change',renderItems);$('item-clear').addEventListener('click',()=>{$('item-search').value='';$('item-unknown').checked=false;$('item-kind').value='';$('item-sort').value='name';renderItems();});
+render();renderItems();renderHistory();
+</script></html>

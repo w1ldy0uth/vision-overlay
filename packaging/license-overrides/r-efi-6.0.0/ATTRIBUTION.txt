@@ -1,0 +1,7 @@
+Package: r-efi 6.0.0
+Upstream: https://github.com/r-efi/r-efi
+Revision: 7e1b0322d31d625f81a5656096330934f9cd835d
+Declared SPDX license: MIT OR Apache-2.0 OR LGPL-2.1-or-later
+License used in this distribution: MIT
+Authors: not listed in Cargo metadata
+The published crate has no separate root license file; see the pinned upstream README and license declaration.

@@ -1,0 +1,44 @@
+[
+  {
+    "package": "etherparse-0.16.0",
+    "path": "LICENSE-APACHE",
+    "source": "https://github.com/JulianSchmid/etherparse/blob/93c7f0bb136f42692d69365e4799d6a4e71fd8b8/LICENSE-APACHE",
+    "sha256": "affcd3a3acd2a70d6405c6a5088413da8f97b91f5074ae313fbaa2ec4b45b19f"
+  },
+  {
+    "package": "etherparse-0.16.0",
+    "path": "LICENSE-MIT",
+    "source": "https://github.com/JulianSchmid/etherparse/blob/93c7f0bb136f42692d69365e4799d6a4e71fd8b8/LICENSE-MIT",
+    "sha256": "4be7e6a9b3e7293807bbebfd081941c2d87fa445733e1ad0a9fc6efbc4f3029a"
+  },
+  {
+    "package": "valuable-0.1.1",
+    "path": "LICENSE",
+    "source": "https://github.com/tokio-rs/valuable/blob/9efc29b6e58cef28f6566a47aa7e142a55fead77/LICENSE",
+    "sha256": "ed60d479b8fd1f64e9cbc3de449a16a53ac1b3d1b6aeb9bf9d190a8e93061b44"
+  },
+  {
+    "package": "byteorder_slice-3.0.0",
+    "path": "UPSTREAM-README.md",
+    "source": "https://raw.githubusercontent.com/courvoif/byteorder_slice/044018a45be8f549e2ecf222d3edf609c1319a22/README.md",
+    "sha256": "673305745d5050355a21af3a1dbe635e8eb6ae457546160127f3084ca734e5b6"
+  },
+  {
+    "package": "crc-catalog-2.5.0",
+    "path": "MIT.txt",
+    "source": "https://raw.githubusercontent.com/akhilles/crc-catalog/ed4ad631f22b05055c21a3a4127eb7cf6d75bb62/LICENSES/MIT.txt",
+    "sha256": "5ef8fcfb6cccec8fcae043c834099a60c8b7406408db576e026d2b7e67dc5cf5"
+  },
+  {
+    "package": "derive-into-owned-0.2.0",
+    "path": "UPSTREAM-README.md",
+    "source": "https://raw.githubusercontent.com/koivunej/derive-into-owned/57d509eb8c3d4b4ad488517ca0594b91ed567625/README.md",
+    "sha256": "21ab98be8baa1f776c399eac5fcea010ea3306377fa2e90111c0452c7fb39c0f"
+  },
+  {
+    "package": "r-efi-6.0.0",
+    "path": "UPSTREAM-README.md",
+    "source": "https://raw.githubusercontent.com/r-efi/r-efi/7e1b0322d31d625f81a5656096330934f9cd835d/README.md",
+    "sha256": "420f65fec3ba2e89d49da51b222d2881d26959037a7b7d3794143db4bd4627b1"
+  }
+]

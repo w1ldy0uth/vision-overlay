@@ -1,1 +1,25 @@
 docs/
+/target/
+/vendor/pktmon/Cargo.lock
+*.jsonl
+/local-data/
+/inventory-view.html
+*.voraw
+*.etl
+*.pcapng
+
+/web/node_modules/
+/web/dist/
+/web/public/catalog.json
+
+/dist/
+
+# Generated caches and local installations
+__pycache__/
+*.py[cod]
+*.sqlite3
+*.sqlite3-*
+*.visionbackup
+*.pdb
+.env
+.env.*

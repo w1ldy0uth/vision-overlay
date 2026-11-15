@@ -1,0 +1,13 @@
+[workspace]
+members = ["crates/capture-probe", "crates/app-store", "crates/app-server", "crates/launcher"]
+exclude = ["vendor/pktmon", "vendor/auto-artifactarium"]
+resolver = "3"
+
+[workspace.package]
+version = "0.1.0-beta.1"
+
+[patch.crates-io]
+pktmon = { path = "vendor/pktmon" }
+
+[patch."https://github.com/konkers/auto-artifactarium"]
+auto-artifactarium = { path = "vendor/auto-artifactarium" }

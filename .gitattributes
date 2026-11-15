@@ -1,0 +1,9 @@
+* text=auto eol=lf
+*.ps1 text eol=crlf
+*.sql text eol=lf
+*.ttf -text
+*.gz -text
+packaging/dispatch/** -text
+packaging/license-overrides/** -text
+vendor/auto-artifactarium/keys/*.pem -text
+web/public/fonts/Nunito-OFL.txt -text

@@ -1,0 +1,7 @@
+Package: crc-catalog 2.5.0
+Upstream: https://github.com/akhilles/crc-catalog
+Revision: ed4ad631f22b05055c21a3a4127eb7cf6d75bb62
+Declared SPDX license: MIT OR Apache-2.0
+License used in this distribution: MIT
+Authors: Akhil Velagapudi <akhilvelagapudi@gmail.com>
+The published crate has no separate root license file; see the pinned upstream README and license declaration.

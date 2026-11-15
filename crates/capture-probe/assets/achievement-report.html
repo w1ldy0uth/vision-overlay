@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="ru">
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Vision Overlay · Достижения</title>
+<style>
+:root{color-scheme:dark;font-family:Segoe UI,system-ui,sans-serif;background:#10161e;color:#e4eaf2}body{max-width:1600px;margin:auto;padding:28px}h1{font-size:28px;margin:10px 0}p,summary{color:#aab8c9;line-height:1.6}.brand{color:#85d9c2;font-size:12px;letter-spacing:3px}.tools{display:flex;gap:14px;flex-wrap:wrap;margin:24px 0 14px;align-items:end}.tools label{display:grid;gap:7px;font-size:13px;color:#aab8c9}.search-label{flex:1;min-width:220px}input,select,button{font:inherit;color:#e4eaf2;background:#1c2633;border:1px solid #3c4b60;border-radius:8px;padding:11px 12px}select{max-width:100%}button{cursor:pointer}input:focus-visible,select:focus-visible,button:focus-visible{outline:2px solid #85d9c2;outline-offset:2px}#shown-summary{font-size:14px;color:#85d9c2}.table-wrap{overflow:auto;max-height:68vh;border:1px solid #293442;border-radius:10px}table{width:100%;border-collapse:collapse}td,th{padding:12px;text-align:left;vertical-align:top;border-bottom:1px solid #293442}th{position:sticky;top:0;background:#18212c;color:#aab8c9;font-size:13px;z-index:1}td:nth-child(1){font:13px monospace;color:#93a4b9}td:nth-child(2){min-width:190px}td:nth-child(3){min-width:170px}td:nth-child(4){min-width:140px}td:nth-child(5){white-space:nowrap;font-variant-numeric:tabular-nums}td:nth-child(6){min-width:160px;font-variant-numeric:tabular-nums}td:nth-child(7){min-width:260px}#empty{padding:16px;border:1px solid #3c4b60;border-radius:8px}details{margin:20px 0;font-size:13px}summary{cursor:pointer}[hidden]{display:none!important}@media(max-width:700px){body{padding:18px 12px}.tools label{width:100%}.tools button{width:100%}h1{font-size:25px}.table-wrap{max-height:60vh}}
+</style>
+<div class="brand">VISION OVERLAY / ACHIEVEMENTS</div>
+<h1>Достижения</h1>
+<p>__REPORT_TOTAL__ записей · __REPORT_COMPLETED__ выполнено · __REPORT_UNFINISHED__ не выполнено. Сохранённый снимок аккаунта.</p>
+<div class="tools">
+ <label class="search-label" for="search">Поиск<input id="search" type="search" placeholder="Название, описание или ID достижения" autocomplete="off"></label>
+ <label for="category">Категория<select id="category">__REPORT_CATEGORIES__</select></label>
+ <label for="status">Статус<select id="status"><option value="all">Все статусы (__REPORT_TOTAL__)</option><option value="unfinished">Не выполнено (__REPORT_UNFINISHED__)</option><option value="completed">Выполнено (__REPORT_COMPLETED__)</option><option value="unclaimed">Награда не получена (__REPORT_UNCLAIMED__)</option><option value="claimed">Награда получена (__REPORT_CLAIMED__)</option></select></label>
+ <button id="reset" type="button">Сбросить фильтры</button>
+</div>
+<p id="shown-summary" role="status" aria-live="polite">Показано __REPORT_TOTAL__ из __REPORT_TOTAL__ достижений</p>
+<p id="empty" hidden>По выбранным фильтрам ничего не найдено.</p>
+<div class="table-wrap"><table><thead><tr><th>ID</th><th>Название</th><th>Категория</th><th>Статус</th><th>Текущее / цель</th><th>Время выполнения</th><th>Описание</th></tr></thead><tbody id="rows">__REPORT_ROWS__</tbody></table></div>
+<details><summary>О данных отчёта</summary><p>Счётчик выполненных достижений подтверждён пользователем. «Выполнено» включает достижения с полученной наградой и без неё. Прочерк в текущем прогрессе означает отсутствие поля в пакете; накопительные значения могут превышать цель. Время указано в UTC. Названия и категории добавлены из справочника игры. Пакет содержит состояние переданных достижений, а не весь каталог возможных достижений.</p></details>
+<noscript><p>Для фильтров нужен JavaScript. Все записи доступны в таблице и через поиск браузера Ctrl+F.</p></noscript>
+<script>
+'use strict';
+const search=document.getElementById('search'),category=document.getElementById('category'),status=document.getElementById('status');
+const normalize=value=>value.normalize('NFKC').toLocaleLowerCase('ru').replace(/ё/g,'е');
+const rows=Array.from(document.querySelectorAll('#rows tr'),row=>({row,text:normalize(row.textContent),category:row.dataset.category,status:row.dataset.status}));
+function render(){
+ const terms=normalize(search.value).trim().split(/\s+/).filter(Boolean);let shown=0;
+ for(const item of rows){
+  const state=status.value;
+  const matchStatus=state==='all'||state==='unfinished'&&item.status==='1'||state==='completed'&&['2','3'].includes(item.status)||state==='unclaimed'&&item.status==='2'||state==='claimed'&&item.status==='3';
+  const visible=(category.value==='all'||category.value===item.category)&&matchStatus&&terms.every(term=>item.text.includes(term));
+  item.row.hidden=!visible;if(visible)shown++;
+ }
+ document.getElementById('shown-summary').textContent=`Показано ${shown} из ${rows.length} достижений`;
+ document.getElementById('empty').hidden=shown!==0;
+}
+search.addEventListener('input',render);category.addEventListener('change',render);status.addEventListener('change',render);
+document.getElementById('reset').addEventListener('click',()=>{search.value='';category.value='all';status.value='all';render();});
+render();
+</script>
+</html>

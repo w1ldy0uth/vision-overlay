@@ -1,0 +1,14 @@
+{
+  "packaging/dispatch/gi.json": {
+    "sha256": "e0e1fcbfb6aa5d727367a60574b7688a4da14abe12c5a3bdad3a7fc87c694d18",
+    "source": "https://github.com/konkers/irminsul/blob/49e66bdfc43c4c6e4293e7f1b7e85b6988069ae4/keys/gi.json"
+  },
+  "vendor/auto-artifactarium/keys/private_key_4.pem": {
+    "sha256": "c43fafade9dbc63440339fab24fa19d5ae78bc69e60d66ee956d951d6ff6392f",
+    "source": "https://github.com/konkers/auto-artifactarium/blob/7dafbf0af0bfece23e46382dd3f991d39a5436ac/keys/private_key_4.pem"
+  },
+  "vendor/auto-artifactarium/keys/private_key_5.pem": {
+    "sha256": "6a3fbd53387f9d13230f8558e40df18ad3a8fc11fc23da83a202eedc3bd70ce3",
+    "source": "https://github.com/konkers/auto-artifactarium/blob/7dafbf0af0bfece23e46382dd3f991d39a5436ac/keys/private_key_5.pem"
+  }
+}

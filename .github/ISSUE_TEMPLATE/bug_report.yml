@@ -1,0 +1,37 @@
+name: Ошибка
+description: Сообщить об ошибке приложения или захвата
+title: "[Bug]: "
+body:
+  - type: input
+    id: version
+    attributes:
+      label: Версия Vision Overlay
+      placeholder: 0.1.0-beta.1
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Версия Windows и игры
+      description: Сборка Windows, версия глобального клиента и способ запуска приложения.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Шаги и время воспроизведения
+      description: Действия, время, ожидаемый и фактический результат.
+    validations:
+      required: true
+  - type: textarea
+    id: diagnostics
+    attributes:
+      label: Диагностика
+      description: Экспорт доступен в Настройки → Захваты и снимки. Сначала проверьте состав. UID и игровые данные сохраняются; raw может содержать сессионные данные. Не публикуйте токены, authkey, data целиком или непроверенный архив.
+  - type: checkboxes
+    id: privacy
+    attributes:
+      label: Перед отправкой
+      options:
+        - label: В сообщении и вложениях нет токенов, authkey и других персональных секретов.
+          required: true

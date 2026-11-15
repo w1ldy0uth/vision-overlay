@@ -1,0 +1,28 @@
+[package]
+name = "app-store"
+version.workspace = true
+edition = "2024"
+license = "Apache-2.0"
+publish = false
+
+[dependencies]
+anyhow = "1"
+futures = "0.3"
+base64 = "0.22"
+thiserror = "2"
+clap = { version = "4", features = ["derive"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = { version = "1", features = ["arbitrary_precision"] }
+sha2 = "0.10"
+sqlx = { version = "=0.9.0", default-features = false, features = ["runtime-tokio", "sqlite", "migrate", "macros"] }
+tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
+uuid = { version = "1", features = ["v4", "v5"] }
+time = { version = "0.3", features = ["parsing", "formatting"] }
+
+tempfile = "3"
+zip = { version = "6", default-features = false, features = ["deflate"] }
+libsqlite3-sys = "=0.37.0"
+
+[[bin]]
+name = "vision-store"
+path = "src/main.rs"
