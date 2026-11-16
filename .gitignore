@@ -1,6 +1,7 @@
 docs/
 /target/
 /vendor/pktmon/Cargo.lock
+/vendor/pktmon/target/
 *.jsonl
 /local-data/
 /inventory-view.html
@@ -13,6 +14,8 @@ docs/
 /web/public/catalog.json
 
 /dist/
+/beta_logs/
+/beta_log/
 
 # Generated caches and local installations
 __pycache__/

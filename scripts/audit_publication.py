@@ -25,7 +25,7 @@ def audit(staged=False, denied=()):
         path = Path(name)
         if not path.is_file():
             continue
-        if name.startswith(("local-data/", "target/", "dist/", "docs/", "web/node_modules/")) or "__pycache__" in path.parts or path.suffix in (".pyc", ".pdb", ".sqlite3", ".etl", ".pcapng", ".voraw", ".visionbackup"):
+        if name.startswith(("local-data/", "target/", "dist/", "docs/", "beta_log/", "beta_logs/", "web/node_modules/")) or "__pycache__" in path.parts or path.suffix in (".pyc", ".pdb", ".sqlite3", ".etl", ".pcapng", ".voraw", ".visionbackup"):
             errors.append(f"Generated/private artifact: {name}")
         raw = subprocess.check_output(["git", "show", ":" + name]) if staged else path.read_bytes()
         approved = name in public

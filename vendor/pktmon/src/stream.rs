@@ -17,11 +17,16 @@ impl Capture {
         self.start()?;
 
         Ok(async_stream::stream! {
+            let mut checked = std::time::Instant::now();
             loop {
+                if checked.elapsed() >= std::time::Duration::from_secs(1) {
+                    if let Err(error) = self.backend.poll_health() { log::error!("Capture health check failed: {error}"); break; }
+                    checked = std::time::Instant::now();
+                }
                 match self.backend.try_next_packet() {
                     Ok(packet) => yield packet,
                     Err(TryRecvError::Empty) => {
-                        notify.notified().await;
+                        let _ = tokio::time::timeout(std::time::Duration::from_secs(1),notify.notified()).await;
                     }
                     Err(TryRecvError::Disconnected) => break,
                 }

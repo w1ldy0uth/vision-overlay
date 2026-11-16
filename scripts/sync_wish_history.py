@@ -5,8 +5,8 @@ from pathlib import Path
 import import_wish_history as wish
 
 
-def synchronize(uid, region, output):
-    candidates, _ = wish.discover(wish.find_game_data(), region)
+def synchronize(uid, region, output, app_data=None):
+    candidates, _ = wish.discover(wish.find_game_data(app_data), region)
     if not candidates:
         raise wish.ImportFailure("No matching cached history URL")
     candidate, (first_banner, first_page) = wish.select_access(candidates, uid, region, progress=lambda _: None)
@@ -24,6 +24,7 @@ def main():
     parser.add_argument("--uid", required=True)
     parser.add_argument("--region", required=True, choices=wish.REGIONS)
     parser.add_argument("--directory", type=Path, required=True)
+    parser.add_argument("--app-data", type=Path)
     parser.add_argument("--interface-index", type=int)
     args = parser.parse_args()
     status = "failed"
@@ -32,8 +33,10 @@ def main():
             if not 1 <= args.interface_index <= 0xffffff:
                 raise ValueError("Invalid interface")
             wish._interface_index = args.interface_index
-        synchronize(args.uid, args.region, args.directory / "history.json")
+        synchronize(args.uid, args.region, args.directory / "history.json", args.app_data)
         status = "success"
+    except wish.NetworkFailure:
+        status = "needs_network"
     except wish.ApiFailure as error:
         status = "needs_access" if error.code in (-100, -101) else "failed"
     except wish.ImportFailure as error:

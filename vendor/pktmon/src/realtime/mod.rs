@@ -16,6 +16,8 @@ use crate::{
 mod c_api;
 mod c_filter;
 
+pub(crate) fn api_available() -> bool { c_api::PacketMonitorApi::new().is_ok() }
+
 #[derive(Debug)]
 struct MonitorContext {
     sender: mpsc::SyncSender<Packet>,

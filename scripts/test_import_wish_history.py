@@ -21,6 +21,23 @@ def row(id="1700000000000000001", banner="301", **changes):
 
 
 class ImportTests(unittest.TestCase):
+    def test_configured_installation_is_used_without_game_log(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            game = root / "game with spaces"
+            (game / "GenshinImpact_Data").mkdir(parents=True)
+            (root / "body-codec.json").write_text(wish.json.dumps({"client_directory": str(game)}))
+            self.assertEqual(wish.find_game_data(root), game / "GenshinImpact_Data")
+
+    def test_invalid_config_falls_back_to_log_without_exposing_its_content(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            game = root / "game"
+            (game / "GenshinImpact_Data").mkdir(parents=True)
+            (root / "body-codec.json").write_text("{invalid private config")
+            with patch.object(wish, "shared_read", side_effect=[b"{invalid", str(game / "GenshinImpact_Data").encode()]), patch.object(Path, "is_file", return_value=True):
+                self.assertEqual(wish.find_game_data(root), game / "GenshinImpact_Data")
+
     def test_explicit_interface_is_applied_only_to_the_request_socket(self):
         connection = MagicMock()
         peers = [(2, 1, 6, "", ("192.0.2.1", 443))]
@@ -132,7 +149,7 @@ class ImportTests(unittest.TestCase):
     def test_network_errors_do_not_expose_authenticated_url(self):
         with patch.object(wish.urllib.request, "build_opener") as build:
             build.return_value.open.side_effect = URLError("https://example.invalid/?authkey=synthetic-secret")
-            with self.assertRaises(wish.ImportFailure) as raised:
+            with self.assertRaises(wish.NetworkFailure) as raised:
                 wish.request_page(access(), "301", 1, "0")
             self.assertNotIn("synthetic-secret", str(raised.exception))
 

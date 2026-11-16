@@ -1,6 +1,7 @@
 ﻿#requires -Version 5.1
 [CmdletBinding()]
 param(
+    [ValidateSet("auto","realtime","etw")][string]$CaptureBackend = "auto",
     [ValidateRange(1,86400)][int]$Duration,
     [ValidateRange(0,65535)][int]$Component = 0,
     [switch]$RecordRaw,
@@ -20,12 +21,15 @@ $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'Runtime.Paths.ps1')
 $probe = Join-Path $binaryRoot 'capture-probe.exe'
 $keys = Join-Path $dataRoot 'gi.json'
+if (!$DryRun) {
+    & (Join-Path $PSScriptRoot 'Test-CaptureEnvironment.ps1') -RequireCaptureApi -Backend $CaptureBackend | Out-Null
+}
 if ($RecordRaw -and $RawSegmentMiB -gt $RawBudgetMiB) { throw 'RawSegmentMiB must not exceed RawBudgetMiB.' }
 $hasDeadline = $PSBoundParameters.ContainsKey('Duration')
 $durationText = if ($hasDeadline) { "$Duration seconds (diagnostic deadline)" } else { 'until game exit or Ctrl+C (no deadline)' }
 if ($NoStopOnGameExit -and !$hasDeadline) { $durationText = 'until Ctrl+C (no deadline)' }
 if ($DryRun) {
-    Write-Output "Plan: realtime API only, NIC sources (component=$Component), UDP 22101/22102, $durationText."
+    Write-Output "Plan: backend=$CaptureBackend, NIC sources (component=$Component), UDP 22101/22102, $durationText."
     Write-Output "Track materials, equipment, Mora, Primogems, talents, friendship and Adventure Rank/EXP; named timestamped events; JSONL in unique local-data/realtime-*; raw ring=$RecordRaw (budget $RawBudgetMiB MiB, segment $RawSegmentMiB MiB)."
     Write-Output "Game-process auto-stop enabled=$(!$NoStopOnGameExit); arms after GenshinImpact.exe is first detected; exit confirmation 3 seconds."
     Write-Output "Acquisition-to-decoder queue: $QueueCapacity packets (bounded)."
@@ -90,6 +94,7 @@ try {
         Write-Host "Live panel: $panelUrl"
         if (!$NoBrowser) { Start-Process $panelUrl }
     }
+    $captureArguments += @('--capture-backend',$CaptureBackend)
     & $probe @captureArguments
     if ($LASTEXITCODE -ne 0) { throw "Realtime capture failed. Retained files: $runDir" }
 } finally {

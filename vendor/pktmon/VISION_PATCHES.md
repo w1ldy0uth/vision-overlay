@@ -26,3 +26,14 @@ References:
 - https://learn.microsoft.com/en-us/windows/win32/pktmon/packetmonitor/nf-packetmonitor-packetmonitorcreaterealtimestream
 - https://learn.microsoft.com/en-us/windows/win32/pktmon/packetmonitor/nf-packetmonitor-packetmonitorenumdatasources
 - https://learn.microsoft.com/en-us/windows/win32/pktmon/packetmonitor/nf-packetmonitor-packetmonitoraddsingledatasourcetosession
+
+## Windows 10 compatibility backend
+
+- Explicit capability-based auto/realtime/etw selection; no fallback after access or initialization errors.
+- Dedicated named ETW session owned by its handle. No orphan-session takeover, no driver unload.
+- Idle-only Pktmon control through documented pktmon.exe start/stop commands, NIC/full-packet selection, refusal of existing/unknown global filters.
+- Global filters remain untouched. Only complete game UDP packets (22101/22102, IPv4/IPv6) enter the bounded 8192-entry callback queue and raw recorder.
+- Owned ETW session buffers bounded at 64 KiB x 256, plus a 4 MiB bounded PktMon memory log discarded after shutdown; EventsLost/RealTimeBuffersLost sampled via ControlTrace QUERY and fed into existing tracking-loss detection.
+- Consumer closure/thread completion supervised; stop closes the owned trace and joins its reader before callback context is released.
+- Unused upstream utf16string development dependency removed so patched library tests use the workspace lockfile.
+- New ETW TDH decoder verified against a saved private ETL (11,501 complete game packets). Forced ETW startup, full UDP delivery, loss counters and graceful shutdown also verified on Windows 11. Live Windows 10 validation still required.

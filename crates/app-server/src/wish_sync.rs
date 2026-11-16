@@ -70,6 +70,8 @@ async fn download(
         .arg(&context.server_region)
         .arg("--directory")
         .arg(dir.path())
+        .arg("--app-data")
+        .arg(root)
         .stdin(Stdio::null())
         .stdout(Stdio::null())
         .stderr(Stdio::null())
@@ -115,6 +117,12 @@ async fn download(
             ))
         }
         Some("needs_access") => Ok(("needs_access".into(), None)),
+        Some("needs_network") => {
+            crate::app_log!(
+                "Wish history API is unreachable; check VPN or the configured outgoing interface"
+            );
+            Ok(("failed".into(), None))
+        }
         _ => Ok(("failed".into(), None)),
     }
 }

@@ -29,6 +29,10 @@ class ImportFailure(Exception):
     """Only explicitly safe messages may be returned to the console."""
 
 
+class NetworkFailure(ImportFailure):
+    """The API is unreachable; refreshing cache credentials cannot fix routing."""
+
+
 class ApiFailure(ImportFailure):
     def __init__(self, code):
         self.code = code
@@ -78,7 +82,19 @@ def shared_read(path, limit=32 * 1024 * 1024):
     return data
 
 
-def find_game_data():
+def find_game_data(app_data=None):
+    # Portable setup already knows the installation; the game log is only a fallback.
+    if app_data is not None:
+        config = Path(app_data) / "body-codec.json"
+        if config.is_file():
+            try:
+                client = json.loads(shared_read(config, 4096)).get("client_directory")
+                if isinstance(client, str) and Path(client).is_absolute():
+                    root = Path(client) / "GenshinImpact_Data"
+                    if root.is_dir():
+                        return root
+            except (ImportFailure, OSError, ValueError, AttributeError):
+                pass
     log = Path(os.environ.get("USERPROFILE", str(Path.home()))) / "AppData/LocalLow/miHoYo/Genshin Impact/output_log.txt"
     if not log.is_file():
         raise ImportFailure("Game log not found; specify --game-data")
@@ -188,7 +204,7 @@ def request_page(access, banner, page, cursor, timeout=10):
     except urllib.error.HTTPError as error:
         raise ImportFailure(f"History API HTTP error {error.code}") from None
     except (urllib.error.URLError, TimeoutError, OSError):
-        raise ImportFailure("Cannot connect to HoYoVerse history API; check whether history loads in the game") from None
+        raise NetworkFailure("Cannot connect to HoYoVerse history API; check whether history loads in the game") from None
     except (ValueError, UnicodeError):
         raise ImportFailure("Invalid history API JSON") from None
     if not isinstance(data, dict) or data.get("retcode") != 0:

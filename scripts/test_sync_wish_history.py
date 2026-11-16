@@ -8,6 +8,15 @@ import import_wish_history as wish
 
 
 class SyncTests(unittest.TestCase):
+    def test_network_failure_is_reported_separately_and_no_secret_is_emitted(self):
+        with tempfile.TemporaryDirectory() as d:
+            args = ["sync", "--uid", "700000001", "--region", "os_euro", "--directory", d, "--app-data", d]
+            with patch("sys.argv", args), patch.object(sync, "synchronize", side_effect=wish.NetworkFailure("private-url")) as download:
+                sync.main()
+                self.assertEqual(download.call_args.args[-1], Path(d))
+            self.assertEqual(json.loads((Path(d)/"result.json").read_text()), {"status":"needs_network"})
+            self.assertFalse((Path(d)/"history.json").exists())
+
     def test_cached_verified_first_page_is_reused_and_secrets_are_not_serialized(self):
         candidate=wish.Access({"authkey":"private-secret","region":"os_euro"},0,0,0)
         row={"id":"12345678901234567890","uid":"700000001","gacha_type":"301","item_id":"","count":"1","time":"2026-11-15 01:00:00","name":"Меч","item_type":"Оружие","rank_type":"3","lang":"ru"}

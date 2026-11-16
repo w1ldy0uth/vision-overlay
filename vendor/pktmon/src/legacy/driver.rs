@@ -55,6 +55,13 @@ struct PktMonApi {
 
 impl Driver {
     pub fn new() -> win::Result<Self> {
+        let driver = Self::open_idle()?;
+        driver.remove_all_filters()?;
+        Ok(driver)
+    }
+
+    /// Open without stopping an external capture or changing its filters.
+    pub fn open_idle() -> win::Result<Self> {
         unsafe {
             let module = LoadLibraryA(s!("PktMonApi.dll"))?;
 
@@ -81,14 +88,9 @@ impl Driver {
             trace!("Opened PktMon device");
             let driver = Driver { api };
 
-            // If the driver is already running, stop it
             if driver.is_running()? {
-                debug!("Driver is already running, stopping it...");
-                driver.stop_capture()?;
+                return Err(win::Error::new(windows::core::HRESULT(0x800700AAu32 as i32), "PktMon is already in use".into()));
             }
-
-            // Clear all filters before handing off the driver to ensure we have a clean state
-            driver.remove_all_filters()?;
 
             Ok(driver)
         }

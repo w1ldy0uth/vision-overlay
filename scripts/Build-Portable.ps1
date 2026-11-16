@@ -46,7 +46,7 @@ try {
     New-Item -ItemType Directory -Path (Join-Path $destination 'components/scripts'),(Join-Path $destination 'components/reference'),(Join-Path $destination 'components/python'),(Join-Path $destination 'licenses') -Force | Out-Null
     Copy-Item -LiteralPath (Join-Path $bin 'VisionOverlay.exe') -Destination $destination
     foreach ($name in 'vision-server.exe','capture-probe.exe') { Copy-Item -LiteralPath (Join-Path $bin $name) -Destination (Join-Path $destination 'components') }
-    foreach ($name in 'Runtime.Paths.ps1','Configure-AutoCapture.ps1','Watch-GameCapture.ps1','AutoCapture.State.ps1','Start-RealtimeCapture.ps1','sync_wish_history.py','import_wish_history.py') { Copy-Item -LiteralPath (Join-Path $PSScriptRoot $name) -Destination (Join-Path $destination 'components/scripts') }
+    foreach ($name in 'Runtime.Paths.ps1','Configure-AutoCapture.ps1','Watch-GameCapture.ps1','AutoCapture.State.ps1','Start-RealtimeCapture.ps1','Test-CaptureEnvironment.ps1','sync_wish_history.py','import_wish_history.py') { Copy-Item -LiteralPath (Join-Path $PSScriptRoot $name) -Destination (Join-Path $destination 'components/scripts') }
     $dispatch=Join-Path $root 'packaging/dispatch/gi.json'
     $dispatchHash='e0e1fcbfb6aa5d727367a60574b7688a4da14abe12c5a3bdad3a7fc87c694d18'
     if ((Get-FileHash -LiteralPath $dispatch -Algorithm SHA256).Hash.ToLowerInvariant() -ne $dispatchHash) { throw 'Bundled dispatch file does not match the pinned upstream version' }

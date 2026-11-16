@@ -12,7 +12,7 @@ use log::{debug, info};
 use crate::{CaptureBackend, Packet, filter::PktMonFilter, util::install_shutdown_hook};
 
 mod c_filter;
-mod driver;
+pub(crate) mod driver;
 mod etw;
 
 pub use etw::EtlConsumer;

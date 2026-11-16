@@ -50,6 +50,8 @@ jobs:
         run: |
           cargo test --workspace --all-targets --locked
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          cargo test -p pktmon --lib --locked
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           cargo test -p auto-artifactarium --lib --locked
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Python tests and contracts
@@ -64,7 +66,12 @@ jobs:
       - name: Frontend tests
         run: npm --prefix web test
       - name: Watcher policy tests
-        run: powershell.exe -NoProfile -ExecutionPolicy RemoteSigned -File scripts/Test-AutoCapturePolicy.ps1
+        shell: pwsh
+        run: |
+          powershell.exe -NoProfile -ExecutionPolicy RemoteSigned -File scripts/Test-AutoCapturePolicy.ps1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          powershell.exe -NoProfile -ExecutionPolicy RemoteSigned -File scripts/Test-CaptureBackendPolicy.ps1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Build portable
         run: powershell.exe -NoProfile -ExecutionPolicy RemoteSigned -File scripts/Build-Portable.ps1 -SkipWebBuild
       - name: Verify portable without a desktop or game

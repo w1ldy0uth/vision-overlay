@@ -52,6 +52,9 @@ mod wish_state;
     about = "Experimental Windows inventory capture and material tracking prototype"
 )]
 struct Args {
+    /// Backend selected by capability; force ETW for compatibility testing.
+    #[arg(long, default_value="auto", value_parser=["auto","realtime","etw"])]
+    capture_backend: String,
     /// Dispatch-key JSON from a compatible Irminsul checkout. Never printed.
     #[arg(long, required_unless_present = "demo")]
     keys: Option<PathBuf>,
@@ -413,6 +416,7 @@ async fn capture(
                 args.queue_capacity as usize,
                 args.component,
                 args.ready_file.clone(),
+                args.capture_backend.clone(),
             )?,
         }
     };
@@ -428,7 +432,7 @@ async fn capture(
         "recording_mode":if args.record_ring.is_some(){"ring"}else if args.record.is_some(){"single"}else{"none"},
         "recording_segment_bytes":args.record_segment_mib*1024*1024,"duration_seconds":args.duration,
         "stop_on_game_exit":!replay && !args.no_stop_on_game_exit,
-        "live_backend":"pktmon_realtime_nics_patched","component":args.component,"track_materials":args.track_materials,"wish_tracking":args.track_materials,
+        "live_backend":"pktmon_capability_selection","requested_backend":args.capture_backend,"component":args.component,"track_materials":args.track_materials,"wish_tracking":args.track_materials,
         "replay_timing": "as_fast_as_possible_using_recorded_timestamps"}),
     )?;
     if let Some(path) = &args.warmup_replay {

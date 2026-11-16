@@ -288,6 +288,11 @@ impl PacketMonitorApi {
         unsafe {
             let module = LoadLibraryA(s!("PktMonApi.dll"))?;
 
+            // Keep the DLL owned even when resolving an export fails.
+            struct Guard(HMODULE);
+            impl Drop for Guard { fn drop(&mut self) { unsafe { FreeLibrary(self.0); } } }
+            let guard = Guard(module);
+
             macro_rules! get_proc_address {
                 ($name:expr) => {
                     transmute(
@@ -297,7 +302,7 @@ impl PacketMonitorApi {
                 };
             }
 
-            Ok(PacketMonitorApi {
+            let api = PacketMonitorApi {
                 module,
 
                 initialize: get_proc_address!("PacketMonitorInitialize"),
@@ -313,7 +318,9 @@ impl PacketMonitorApi {
                 add_single_data_source_to_session: get_proc_address!(
                     "PacketMonitorAddSingleDataSourceToSession"
                 ),
-            })
+            };
+            std::mem::forget(guard);
+            Ok(api)
         }
     }
 }

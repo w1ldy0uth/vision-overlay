@@ -50,9 +50,9 @@ impl Metrics {
             "interpretation": "counts_start_at_pktmon_delivery_not_network_or_driver"});
         #[cfg(windows)]
         {
-            report["realtime_backend"] = json!({"missed_write":self.backend.missed_write.load(Ordering::Relaxed),
+            report["realtime_backend"] = json!({"etw_events":self.backend.etw_events.load(Ordering::Relaxed),"etw_payload_events":self.backend.etw_payload_events.load(Ordering::Relaxed),"selected_backend":match self.backend.backend_kind.load(Ordering::Relaxed){1=>"packetmonitor_realtime",2=>"pktmon_etw",_=>"not_selected"},"missed_write":self.backend.missed_write.load(Ordering::Relaxed),
                 "missed_read":self.backend.missed_read.load(Ordering::Relaxed),"callback_queue_drops":self.backend.callback_queue_drops.load(Ordering::Relaxed),
-                "invalid_descriptors":self.backend.invalid_descriptors.load(Ordering::Relaxed),"selected_nic_sources":self.backend.selected_sources.load(Ordering::Relaxed)});
+                "invalid_descriptors":self.backend.invalid_descriptors.load(Ordering::Relaxed),"selected_nic_sources":if self.backend.backend_kind.load(Ordering::Relaxed)==2 {None} else {Some(self.backend.selected_sources.load(Ordering::Relaxed))}});
         }
         report
     }
@@ -179,6 +179,7 @@ impl Source {
         capacity: usize,
         component: Option<u32>,
         ready_file: Option<std::path::PathBuf>,
+        backend_mode: String,
     ) -> Result<Self> {
         if recording
             .as_ref()
@@ -198,13 +199,13 @@ impl Source {
             tokio::runtime::Builder::new_current_thread().enable_all().build()?.block_on(async move {
                 use futures::StreamExt;
                 use pktmon::{Capture, filter::{PktMonFilter, TransportProtocol}};
-                let mut capture = Capture::new_realtime_nics(stats.backend.clone(),component).context("Cannot start realtime NIC capture; Windows 11 realtime API and administrator terminal required")?;
+                let mut capture = Capture::new_compatible_nics(stats.backend.clone(),component,&backend_mode).context("Cannot start NIC capture; check backend capabilities, administrator privileges, and external PktMon sessions/filters")?;
                 for port in [22101u16,22102] {
                     capture.add_filter(PktMonFilter { name:format!("VisionOverlay-{port}"),transport_protocol:Some(TransportProtocol::UDP),port:port.into(),..Default::default() })?;
                 }
                 let mut stream = capture.stream().context("Cannot open pktmon stream")?.boxed();
                 crate::control::ready(ready_file.as_ref()).context("Cannot publish capture readiness")?;
-                eprintln!("Realtime NIC capture active ({} sources). Start the game now. Ctrl+C stops acquisition and drains the queue.",stats.backend.selected_sources.load(Ordering::Relaxed));
+                eprintln!("NIC capture active; backend={}. Start the game now. Ctrl+C stops acquisition and drains the queue.", if stats.backend.backend_kind.load(Ordering::Relaxed)==2 {"pktmon_etw"} else {"packetmonitor_realtime"});
                 let mut poll = tokio::time::interval(Duration::from_millis(20));
                 let mut failure = None;
                 loop {

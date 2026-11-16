@@ -70,10 +70,16 @@ mod legacy;
 mod realtime;
 pub mod stream;
 mod util;
+#[cfg(feature = "tokio")]
+mod etw_live;
 
 /// Vision Overlay patch: cumulative callback counters, sampled outside the callback.
 #[derive(Debug, Default)]
 pub struct RealtimeStats {
+    /// 0=not selected, 1=PacketMonitor realtime, 2=PktMon/ETW.
+    pub etw_events: std::sync::atomic::AtomicU64,
+    pub etw_payload_events: std::sync::atomic::AtomicU64,
+    pub backend_kind: std::sync::atomic::AtomicU64,
     pub missed_write: std::sync::atomic::AtomicU64,
     pub missed_read: std::sync::atomic::AtomicU64,
     pub callback_queue_drops: std::sync::atomic::AtomicU64,
@@ -126,6 +132,7 @@ pub struct Packet {
 }
 
 pub(crate) trait CaptureBackend: Debug + Send {
+    fn poll_health(&mut self) -> io::Result<()> { Ok(()) }
     fn start(&mut self) -> io::Result<()>;
     fn stop(&mut self) -> io::Result<()>;
     fn unload(&mut self) -> io::Result<()>;
@@ -140,6 +147,8 @@ pub(crate) trait CaptureBackend: Debug + Send {
 
 #[derive(Debug)]
 enum DispatchCaptureBackend {
+    #[cfg(feature = "tokio")]
+    Etw(etw_live::EtwBackend),
     Legacy(LegacyBackend),
     RealTime(RealTimeBackend),
 }
@@ -147,6 +156,8 @@ enum DispatchCaptureBackend {
 macro_rules! dispatch {
     ($backend:ident, $method:ident($($args:tt)*)) => {
         match $backend {
+            #[cfg(feature = "tokio")]
+            DispatchCaptureBackend::Etw(backend) => backend.$method($($args)*),
             DispatchCaptureBackend::Legacy(backend) => backend.$method($($args)*),
             DispatchCaptureBackend::RealTime(backend) => backend.$method($($args)*),
         }
@@ -154,6 +165,7 @@ macro_rules! dispatch {
 }
 
 impl CaptureBackend for DispatchCaptureBackend {
+    fn poll_health(&mut self) -> io::Result<()> { dispatch!(self, poll_health()) }
     fn start(&mut self) -> io::Result<()> {
         dispatch!(self, start())
     }
@@ -263,9 +275,22 @@ impl Debug for Capture {
 }
 
 impl Capture {
+    /// Capability selection, without retrying permission/initialization failures on another backend.
+    /// `mode` is auto, realtime, or etw. Forced ETW enables Windows 11 regression tests.
+    #[cfg(feature = "tokio")]
+    pub fn new_compatible_nics(stats: std::sync::Arc<RealtimeStats>, component: Option<u32>, mode: &str) -> io::Result<Self> {
+        let realtime_available = realtime::api_available();
+        match mode {
+            "auto" if !realtime_available => Ok(Self { backend:DispatchCaptureBackend::Etw(etw_live::EtwBackend::new(stats,component)?), running:false }),
+            "etw" => Ok(Self { backend:DispatchCaptureBackend::Etw(etw_live::EtwBackend::new(stats,component)?), running:false }),
+            "auto" | "realtime" => Self::new_realtime_nics(stats,component),
+            _ => Err(io::Error::new(io::ErrorKind::InvalidInput,"Unknown capture backend"))
+        }
+    }
     /// Require the realtime API and select NIC sources before capture starts.
     /// No silent fallback to the legacy backend.
     pub fn new_realtime_nics(stats: std::sync::Arc<RealtimeStats>, component: Option<u32>) -> io::Result<Self> {
+        stats.backend_kind.store(1,std::sync::atomic::Ordering::Relaxed);
         let mut backend = RealTimeBackend::new_with_stats(stats)?;
         backend.select_network_interfaces(component)?;
         Ok(Self { backend: DispatchCaptureBackend::RealTime(backend), running: false })

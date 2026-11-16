@@ -40,6 +40,7 @@ impl Layout {
             "python/python.exe",
             "scripts/Configure-AutoCapture.ps1",
             "scripts/Runtime.Paths.ps1",
+            "scripts/Test-CaptureEnvironment.ps1",
             "scripts/sync_wish_history.py",
             "reference/gi.json",
         ] {
@@ -164,6 +165,7 @@ mod tests {
             "python/python.exe",
             "scripts/Configure-AutoCapture.ps1",
             "scripts/Runtime.Paths.ps1",
+            "scripts/Test-CaptureEnvironment.ps1",
             "scripts/sync_wish_history.py",
         ] {
             let path = root.join("components").join(path);
