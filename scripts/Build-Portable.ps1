@@ -90,7 +90,8 @@ try {
     foreach ($file in Get-ChildItem -LiteralPath $destination -File -Recurse) {
         if ($file.LastWriteTimeUtc.Year -lt 1980 -or $file.LastWriteTimeUtc.Year -gt 2107) { $file.LastWriteTimeUtc=[DateTime]::SpecifyKind([DateTime]'1980-01-01',[DateTimeKind]::Utc) }
     }
-    Compress-Archive -LiteralPath $destination -DestinationPath ($destination+'.zip') -CompressionLevel Optimal
+    & (Join-Path $destination 'components/python/python.exe') (Join-Path $PSScriptRoot 'package_portable.py') $destination ($destination+'.zip')
+    if ($LASTEXITCODE -ne 0) { throw 'Canonical portable ZIP creation failed' }
     $hash=(Get-FileHash -LiteralPath ($destination+'.zip') -Algorithm SHA256).Hash.ToLowerInvariant()
     [IO.File]::WriteAllText(($destination+'.zip.sha256'),($hash+'  '+$packageName+".zip`n"),[Text.UTF8Encoding]::new($false))
     Write-Output "Portable ZIP: $destination.zip"

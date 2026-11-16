@@ -52,6 +52,7 @@ def verify(archive, output, headless=False):
     with zipfile.ZipFile(archive) as z:
         assert z.testzip() is None
         for entry in z.infolist():
+            assert "\\" not in entry.orig_filename, "Portable ZIP must store forward-slash entry names"
             target = (output / entry.filename).resolve()
             assert target.is_relative_to(output)
             assert "/data/" not in entry.filename.replace("\\", "/")
