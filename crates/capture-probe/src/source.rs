@@ -50,7 +50,7 @@ impl Metrics {
             "interpretation": "counts_start_at_pktmon_delivery_not_network_or_driver"});
         #[cfg(windows)]
         {
-            report["realtime_backend"] = json!({"etw_events":self.backend.etw_events.load(Ordering::Relaxed),"etw_payload_events":self.backend.etw_payload_events.load(Ordering::Relaxed),"selected_backend":match self.backend.backend_kind.load(Ordering::Relaxed){1=>"packetmonitor_realtime",2=>"pktmon_etw",_=>"not_selected"},"missed_write":self.backend.missed_write.load(Ordering::Relaxed),
+            report["realtime_backend"] = json!({"payload_types":self.backend.payload_types.iter().map(|n|n.load(Ordering::Relaxed)).collect::<Vec<_>>(),"wifi_normalized_frames":self.backend.wifi_normalized_frames.load(Ordering::Relaxed),"wifi_unhandled_frames":self.backend.wifi_unhandled_frames.load(Ordering::Relaxed),"frame_parse_failures":self.backend.frame_parse_failures.load(Ordering::Relaxed),"unsupported_payloads":self.backend.unsupported_payloads.load(Ordering::Relaxed),"etw_events":self.backend.etw_events.load(Ordering::Relaxed),"etw_payload_events":self.backend.etw_payload_events.load(Ordering::Relaxed),"selected_backend":match self.backend.backend_kind.load(Ordering::Relaxed){1=>"packetmonitor_realtime",2=>"pktmon_etw",_=>"not_selected"},"missed_write":self.backend.missed_write.load(Ordering::Relaxed),
                 "missed_read":self.backend.missed_read.load(Ordering::Relaxed),"callback_queue_drops":self.backend.callback_queue_drops.load(Ordering::Relaxed),
                 "invalid_descriptors":self.backend.invalid_descriptors.load(Ordering::Relaxed),"selected_nic_sources":if self.backend.backend_kind.load(Ordering::Relaxed)==2 {None} else {Some(self.backend.selected_sources.load(Ordering::Relaxed))}});
         }

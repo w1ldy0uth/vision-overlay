@@ -271,10 +271,50 @@ fn game_packet(payload: &[u8], kind: u32) -> bool {
     };
     parsed.is_ok_and(|p| matches!(p.transport,Some(TransportSlice::Udp(u)) if [u.source_port(),u.destination_port()].into_iter().any(|p|matches!(p,22101|22102))))
 }
-unsafe fn decode(record: *mut EVENT_RECORD) -> io::Result<Option<Packet>> {
+fn select_payloads(bytes: Vec<u8>, kind: u32, stats: &RealtimeStats) -> Vec<PacketPayload> {
+    if kind == 2 {
+        let frames = match crate::wifi::ethernet(&bytes) {
+            Ok(frames) => frames,
+            Err(_) => {
+                stats.wifi_unhandled_frames.fetch_add(1, Relaxed);
+                return Vec::new();
+            }
+        };
+        stats
+            .wifi_normalized_frames
+            .fetch_add(frames.len() as u64, Relaxed);
+        return frames
+            .into_iter()
+            .filter(|b| game_packet(b, 1))
+            .map(PacketPayload::Ethernet)
+            .collect();
+    }
+    let parsed = if kind == 1 {
+        SlicedPacket::from_ethernet(&bytes)
+    } else {
+        SlicedPacket::from_ip(&bytes)
+    };
+    if parsed.is_err() {
+        stats.frame_parse_failures.fetch_add(1, Relaxed);
+        return Vec::new();
+    }
+    if !game_packet(&bytes, kind) {
+        return Vec::new();
+    }
+    vec![if kind == 1 {
+        PacketPayload::Ethernet(bytes)
+    } else {
+        PacketPayload::IP(bytes)
+    }]
+}
+unsafe fn decode(record: *mut EVENT_RECORD, stats: &RealtimeStats) -> io::Result<Vec<Packet>> {
     let kind = u32::from_le_bytes(unsafe { scalar(record, w!("PacketType"))? });
-    if !matches!(kind, 1 | 3) {
-        return Ok(None);
+    if let Some(counter) = stats.payload_types.get(kind as usize) {
+        counter.fetch_add(1, Relaxed);
+    }
+    if !matches!(kind, 1 | 2 | 3) {
+        stats.unsupported_payloads.fetch_add(1, Relaxed);
+        return Ok(Vec::new());
     }
     let size = u32::from_le_bytes(unsafe { scalar(record, w!("LoggedPayloadSize"))? });
     // A truncated target packet must not silently become an apparently continuous stream.
@@ -286,18 +326,18 @@ unsafe fn decode(record: *mut EVENT_RECORD) -> io::Result<Option<Packet>> {
     unsafe {
         property(record, w!("Payload"), &mut bytes)?;
     }
-    if !game_packet(&bytes, kind) {
-        return Ok(None);
+    let payloads = select_payloads(bytes, kind, stats);
+    if payloads.is_empty() {
+        return Ok(Vec::new());
     }
     let id = u16::from_le_bytes(unsafe { scalar(record, w!("ComponentId"))? });
-    Ok(Some(Packet {
-        component_id: id,
-        payload: if kind == 1 {
-            PacketPayload::Ethernet(bytes)
-        } else {
-            PacketPayload::IP(bytes)
-        },
-    }))
+    Ok(payloads
+        .into_iter()
+        .map(|payload| Packet {
+            component_id: id,
+            payload,
+        })
+        .collect())
 }
 unsafe extern "system" fn event(record: *mut EVENT_RECORD) {
     if record.is_null() {
@@ -318,9 +358,12 @@ unsafe extern "system" fn event(record: *mut EVENT_RECORD) {
     }
     let ctx = unsafe { &*(r.UserContext as *const Context) };
     ctx.stats.etw_payload_events.fetch_add(1, Relaxed);
-    match unsafe { decode(record) } {
-        Ok(Some(packet)) => deliver(ctx, packet),
-        Ok(None) => {}
+    match unsafe { decode(record, &ctx.stats) } {
+        Ok(packets) => {
+            for packet in packets {
+                deliver(ctx, packet);
+            }
+        }
         Err(_) => {
             ctx.stats.invalid_descriptors.fetch_add(1, Relaxed);
         }
@@ -618,6 +661,15 @@ mod tests {
                 eth.extend_from_slice(if v6 { &[0x86, 0xdd] } else { &[0x08, 0x00] });
                 eth.extend_from_slice(&bytes);
                 assert_eq!(game_packet(&eth, 1), port != 443);
+                let mut wifi = vec![0; 24];
+                wifi[0] = 8;
+                wifi.extend_from_slice(&[0xaa, 0xaa, 3, 0, 0, 0]);
+                wifi.extend_from_slice(&eth[12..]);
+                let stats = RealtimeStats::default();
+                let selected = select_payloads(wifi, 2, &stats);
+                assert_eq!(selected.len(), usize::from(port != 443));
+                assert_eq!(stats.wifi_normalized_frames.load(Relaxed), 1);
+                assert_eq!(stats.wifi_unhandled_frames.load(Relaxed), 0);
             }
         }
         assert!(!game_packet(&[0; 20], 1));

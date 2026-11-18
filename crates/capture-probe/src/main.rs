@@ -432,7 +432,7 @@ async fn capture(
         "recording_mode":if args.record_ring.is_some(){"ring"}else if args.record.is_some(){"single"}else{"none"},
         "recording_segment_bytes":args.record_segment_mib*1024*1024,"duration_seconds":args.duration,
         "stop_on_game_exit":!replay && !args.no_stop_on_game_exit,
-        "live_backend":"pktmon_capability_selection","requested_backend":args.capture_backend,"component":args.component,"track_materials":args.track_materials,"wish_tracking":args.track_materials,
+        "live_backend":"pktmon_capability_selection","link_layer_normalization":"ethernet-ip-wifi-msdu-v1","requested_backend":args.capture_backend,"component":args.component,"track_materials":args.track_materials,"wish_tracking":args.track_materials,
         "replay_timing": "as_fast_as_possible_using_recorded_timestamps"}),
     )?;
     if let Some(path) = &args.warmup_replay {

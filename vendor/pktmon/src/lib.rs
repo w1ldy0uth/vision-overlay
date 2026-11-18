@@ -70,12 +70,18 @@ mod legacy;
 mod realtime;
 pub mod stream;
 mod util;
+mod wifi;
 #[cfg(feature = "tokio")]
 mod etw_live;
 
 /// Vision Overlay patch: cumulative callback counters, sampled outside the callback.
 #[derive(Debug, Default)]
 pub struct RealtimeStats {
+    pub payload_types: [std::sync::atomic::AtomicU64;16],
+    pub wifi_normalized_frames: std::sync::atomic::AtomicU64,
+    pub wifi_unhandled_frames: std::sync::atomic::AtomicU64,
+    pub frame_parse_failures: std::sync::atomic::AtomicU64,
+    pub unsupported_payloads: std::sync::atomic::AtomicU64,
     /// 0=not selected, 1=PacketMonitor realtime, 2=PktMon/ETW.
     pub etw_events: std::sync::atomic::AtomicU64,
     pub etw_payload_events: std::sync::atomic::AtomicU64,

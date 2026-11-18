@@ -119,6 +119,22 @@ extern "system" fn data_callback(
     let mut packet_payload_vector = Vec::new();
     packet_payload_vector.extend_from_slice(unsafe { &*packet_payload });
 
+    if let Some(counter)=context.stats.payload_types.get(metadata.packet_type as usize) {counter.fetch_add(1,Relaxed);}
+    if metadata.packet_type==2 {
+        let frames=match crate::wifi::ethernet(&packet_payload_vector) {
+            Ok(frames)=>frames,
+            Err(_)=>{context.stats.wifi_unhandled_frames.fetch_add(1,Relaxed);return;}
+        };
+        context.stats.wifi_normalized_frames.fetch_add(frames.len() as u64,Relaxed);
+        for frame in frames {
+            let packet=Packet {component_id:metadata.component_id,payload:PacketPayload::Ethernet(frame)};
+            if let Err(mpsc::TrySendError::Full(_))=context.sender.try_send(packet) {context.stats.callback_queue_drops.fetch_add(1,Relaxed);}
+        }
+        #[cfg(feature="tokio")]
+        if let Some(notify)=context.notify.as_ref().and_then(|n|n.upgrade()) {notify.notify_one();}
+        return;
+    }
+
     // trace!("Cloned time: {:?}", start.elapsed().as_nanos());
 
     let packet = Packet {
@@ -363,6 +379,25 @@ impl Drop for RealTimeBackend {
 mod vision_tests {
     use super::*;
     use std::sync::{Arc, atomic::Ordering::Relaxed};
+
+    #[test]
+    fn wifi_callback_normalizes_before_acquisition_queue() {
+        let (sender,receiver)=mpsc::sync_channel(1);
+        let stats=Arc::new(crate::RealtimeStats::default());
+        let context=MonitorContext {sender,stats:stats.clone(),#[cfg(feature="tokio")] notify:None};
+        let mut wifi=vec![0;24];wifi[0]=8;
+        wifi.extend_from_slice(&[0xaa,0xaa,3,0,0,0,8,0]);
+        etherparse::PacketBuilder::ipv4([1;4],[2;4],64).udp(22101,40000).write(&mut wifi,&[1,2,3]).unwrap();
+        let offset=std::mem::size_of::<c_api::PacketMonitorStreamMetadata>();
+        let mut bytes=vec![0;offset];bytes.extend_from_slice(&wifi);
+        let mut metadata:c_api::PacketMonitorStreamMetadata=unsafe {std::mem::zeroed()};metadata.component_id=42;metadata.packet_type=2;
+        unsafe {std::ptr::write_unaligned(bytes.as_mut_ptr().cast(),metadata)};
+        let descriptor=c_api::PacketMonitorStreamDataDescriptor {data:bytes.as_ptr().cast(),data_size:bytes.len() as u32,metadata_offset:0,packet_offset:offset as u32,packet_length:wifi.len() as u32,missed_packet_write_count:0,missed_packet_read_count:0};
+        data_callback((&context as *const MonitorContext) as *mut c_void,&descriptor);
+        let packet=receiver.try_recv().unwrap();assert!(matches!(packet.payload,PacketPayload::Ethernet(_)));
+        assert!(matches!(etherparse::SlicedPacket::from_ethernet(packet.payload.to_vec()).unwrap().transport,Some(etherparse::TransportSlice::Udp(u)) if u.payload()==[1,2,3]));
+        assert_eq!(stats.wifi_normalized_frames.load(Relaxed),1);assert_eq!(stats.payload_types[2].load(Relaxed),1);
+    }
 
     #[test]
     fn callback_bounds_loss_counters_bounded_queue_and_closed_receiver() {

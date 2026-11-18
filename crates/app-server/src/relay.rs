@@ -20,6 +20,16 @@ use tokio::sync::watch;
 use uuid::Uuid;
 
 pub const OUTBOX_LIMIT: usize = 64 * 1024 * 1024;
+#[derive(Debug)]
+struct CheckpointMismatch;
+
+impl std::fmt::Display for CheckpointMismatch {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("Source or normalization changed before durable ACK; journal retained")
+    }
+}
+
+impl std::error::Error for CheckpointMismatch {}
 #[derive(Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Descriptor {
@@ -418,6 +428,7 @@ pub async fn watch(
                         if *rx.borrow(){return;}
                     };
                     if let Err(error)=outcome{crate::app_log!("Delivery blocked for {}: {error:#}",dir.file_name().unwrap_or_default().to_string_lossy());
+                    if *rx.borrow() || error.is::<CheckpointMismatch>() || error.chain().any(|cause|cause.downcast_ref::<std::io::Error>().is_some_and(transient_file_error)) {return;}
                     // Quarantine an already accepted capture. If the backend is offline,
                     // its lease expiry still prevents an indefinitely live state.
                     if let Ok(bytes)=fs::read(dir.join("delivery.json"))
@@ -571,12 +582,12 @@ pub async fn run(
                 offset += len as u64;
                 if offset <= checkpoint.source_offset {
                     if offset == checkpoint.source_offset {
-                        ensure!(
-                            hash(&source_hash) == checkpoint.source_sha256
-                                && hash(&event_hash) == checkpoint.event_sha256
-                                && normalizer.sequence == checkpoint.acked_sequence,
-                            "Source/configuration changed before durable ACK: fresh capture required"
-                        );
+                        if hash(&source_hash) != checkpoint.source_sha256
+                            || hash(&event_hash) != checkpoint.event_sha256
+                            || normalizer.sequence != checkpoint.acked_sequence
+                        {
+                            return Err(CheckpointMismatch.into());
+                        }
                         verified = true;
                         atomic(&outbox, b"")?;
                         initialized = true;
@@ -638,8 +649,33 @@ pub async fn run(
                         true
                     }
                     Ok(response) if response.status().is_client_error() => {
-                        let code = response.status();
-                        bail!("Backend rejected delivery ({code}); journal retained");
+                        let status = response.status();
+                        let body: Value = response
+                            .json()
+                            .await
+                            .context("Invalid delivery error response")?;
+                        match body["error"]["code"].as_str() {
+                            // The competing lease can expire or be released. Preserve
+                            // the pending record and let the next poll retry it.
+                            Some("lease_conflict")
+                                if status == reqwest::StatusCode::CONFLICT
+                                    && front
+                                        .events
+                                        .iter()
+                                        .any(|event| event["kind"] == "identity.confirmed") =>
+                            {
+                                false
+                            }
+                            Some(code)
+                                if code.bytes().all(|b| b.is_ascii_lowercase() || b == b'_')
+                                    && code.len() <= 64 =>
+                            {
+                                bail!(
+                                    "Backend rejected delivery ({status}, {code}); journal retained"
+                                );
+                            }
+                            _ => bail!("Backend rejected delivery ({status}); journal retained"),
+                        }
                     }
                     _ => false,
                 }
