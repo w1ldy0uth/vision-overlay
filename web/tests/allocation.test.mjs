@@ -78,3 +78,34 @@ test('weapon ores share a bounded supply between weapons and the same mora pool 
  assert.ok(result.plans[2].materials.every(m=>m.allocated===0));
  assert.equal(resource(result,104013).allocated,1);assert.equal(resource(result,202).allocated,4500);
 });
+
+test('level checkpoints distinguish the same level before and after ascension', async ()=>{
+ const {levelTargets,targetIndex}=await import('../src/goal-targets.mjs');
+ const targets=levelTargets();
+ const i=targetIndex(targets,{level:70,ascension:4});
+ assert.deepEqual(targets.slice(i-1,i+3),[
+  {level:69,ascension:4},{level:70,ascension:4},{level:70,ascension:5},{level:71,ascension:5},
+ ]);
+ assert.deepEqual(levelTargets(70).at(-1),{level:70,ascension:4});
+});
+
+test('equipment swaps retarget the plan; standalone and linked goals reserve each weapon once',()=>{
+ const d=data({104013:5},[character('1')],50000);
+ const hero=d.collections.characters[0];
+ hero.values.equip_guids=['3'];
+ d.collections.weapons=['3','4'].map(entity_key=>({entity_key,confirmation:'observed',values:{item_id:11101,level:1,exp:0,ascension:0}}));
+ d.domains.push({collection:'weapons',freshness:'synchronized',scope:'full'});
+ const linked=goal('1',0,20,0);
+ linked.values.equipped_weapon={level:2,ascension:0};
+ const standalone={goal_id:'3',values:{collection:'weapons',entity_key:'3',level:1,ascension:0,talents:{},priority:1}};
+ const first=allocateGoals([linked,standalone],catalog,d);
+ assert.equal(first.plans.length,2);
+ assert.equal(first.plans.find(p=>p.goal.goal_id==='3').plan.targetLevel,2);
+ assert.equal(standalone.values.level,1);
+ hero.values.equip_guids=['4'];
+ const swapped=allocateGoals([linked,standalone],catalog,d);
+ assert.equal(swapped.plans.find(p=>p.goal.goal_id==='3').plan.complete,true);
+ assert.equal(swapped.plans.find(p=>p.goal.goal_id==='1:weapon').plan.targetLevel,2);
+ hero.values.equip_guids=[];
+ assert.equal(allocateGoals([linked],catalog,d).plans.find(p=>p.goal.goal_id==='1:weapon').plan.status,'unknown');
+});

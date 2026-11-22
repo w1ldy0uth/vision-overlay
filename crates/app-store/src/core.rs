@@ -52,6 +52,9 @@ pub fn collection(c: &str) -> Result<()> {
                 | "traveler_depots"
                 | "wallet"
                 | "adventure"
+                | "abyss"
+                | "theater"
+                | "onslaught"
                 | "achievements"
                 | "teams"
                 | "player_profile"
@@ -193,12 +196,80 @@ pub fn validate_entity(c: &str, key: &str, v: &Value) -> Result<()> {
         );
     }
     if c == "wallet" {
-        ensure!(matches!(key, "201" | "202"), "Unsupported currency");
+        ensure!(matches!(key, "106" | "201" | "202"), "Unsupported currency");
         let count = v["count"]
             .as_str()
             .and_then(|s| s.parse::<i64>().ok())
             .context("Invalid currency count")?;
-        ensure!(key == "201" || count >= 0, "Negative Mora");
+        ensure!(key == "201" || count >= 0, "Negative currency count");
+        if key == "106" {
+            let next = &v["next_recovery_unix_s"];
+            ensure!(
+                count <= 2000
+                    && (next.is_null()
+                        || (count < 200
+                            && next.as_u64().is_some_and(|n| (1_600_000_000
+                                ..=u64::from(u32::MAX))
+                                .contains(&n)))),
+                "Invalid resin state"
+            );
+        }
+    }
+    if c == "onslaught" {
+        ensure!(
+            key == "current"
+                && v["schedule_id"].as_u64().is_some_and(|id| id > 0)
+                && v["difficulty"]
+                    .as_u64()
+                    .is_some_and(|n| (1..=6).contains(&n))
+                && v["seconds"]
+                    .as_u64()
+                    .is_some_and(|n| (1..=86400).contains(&n))
+                && v["starts_unix_s"]
+                    .as_u64()
+                    .zip(v["ends_unix_s"].as_u64())
+                    .is_some_and(|(start, end)| start >= 1_600_000_000
+                        && end > start
+                        && end - start <= 60 * 86400),
+            "Invalid Onslaught state"
+        );
+    }
+    if c == "theater" {
+        ensure!(
+            key == "current"
+                && v["schedule_id"].as_u64().is_some_and(|id| id > 0)
+                && v["acts"].as_u64().is_some_and(|n| n <= 10)
+                && v["arcana"].as_u64().is_some_and(|n| n <= 2)
+                && (v["echo_keys"].is_null() || v["echo_keys"].as_u64().is_some_and(|n| n <= 2))
+                && v["starts_unix_s"]
+                    .as_u64()
+                    .zip(v["ends_unix_s"].as_u64())
+                    .is_some_and(|(start, end)| start >= 1_600_000_000
+                        && end > start
+                        && end - start <= 40 * 86400),
+            "Invalid Imaginarium Theater state"
+        );
+    }
+    if c == "abyss" {
+        let starts = v["starts_unix_s"].as_u64();
+        let ends = v["ends_unix_s"].as_u64();
+        let progress = match (v["floor"].as_u64(), v["chamber"].as_u64()) {
+            (Some(floor), Some(chamber)) => (9..=12).contains(&floor) && (1..=3).contains(&chamber),
+            (None, None) => v["floor"].is_null() && v["chamber"].is_null() && v["stars"] == 0,
+            _ => false,
+        };
+        ensure!(
+            key == "current"
+                && progress
+                && v["schedule_id"].as_u64().is_some_and(|id| id > 0)
+                && v["stars"].as_u64().is_some_and(|stars| stars <= 36)
+                && starts
+                    .zip(ends)
+                    .is_some_and(|(start, end)| start >= 1_600_000_000
+                        && end > start
+                        && end - start <= 40 * 86400),
+            "Invalid Abyss state"
+        );
     }
     if c == "adventure" {
         ensure!(

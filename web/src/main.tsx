@@ -7,7 +7,10 @@ import {characterGallery,characterPriority,savedFavorites,matchesCharacterElemen
 import { equipmentOwners } from "./equipment-owners.mjs";
 import {gameSession,selectedProfile} from "./profile-selection.mjs";
 import {useInventoryWindow} from "./useInventoryWindow";
+import { AbyssStat, TheaterStat, OnslaughtStat } from "./AbyssStat";
+import { ResinStat } from "./ResinStat";
 import { Planner } from "./PlanningView";
+import type { GoalChoice } from "./GoalPicker";
 import { Wishes } from "./Wishes";
 import { talentLevels } from "./talents.mjs";
 import { ProgressionReference } from "./ProgressionReference";
@@ -89,6 +92,12 @@ const emptyCatalog: Catalog = {
 const labels = collections as Record<string, string>,
   regionNames = regions as Record<string, string>,
   freshnessNames = freshness as Record<string, string>;
+const headerRegionCodes: Record<string, string> = {
+  os_euro: "EU",
+  os_asia: "AS",
+  os_usa: "AM",
+  os_cht: "TW/HK/MO",
+};
 const fmt = (v: unknown) =>
   v === null || v === undefined ? "—" : Number(v).toLocaleString("ru-RU");
 const date = (v: unknown) =>
@@ -288,6 +297,7 @@ function App() {
       }
     }),
     [detail, setDetail] = useState<Row | null>(null);
+  const [goalRequest, setGoalRequest] = useState<{profile: string; choice: GoalChoice} | null>(null);
   const [detailParent,setDetailParent]=useState<Row|null>(null);
   const [selectedElements,setSelectedElements]=useState<string[]>([]);
   const [favoritesByProfile,setFavoritesByProfile] = useState<Record<string,number[]>>(()=>savedFavorites(localStorage.getItem("vo.characters.favorites")));
@@ -440,6 +450,7 @@ function App() {
       tab === "characters"
         ? data?.domains.find((d) => d.collection === "characters")
         : categoryDomain(category, rawRows, data?.domains ?? []);
+  const resin = data?.collections.wallet?.find(row => row.entity_key === "106");
   const wallet = Object.fromEntries(
     (data?.collections.wallet ?? []).map((r) => [r.entity_key, r.values.count]),
   );
@@ -488,9 +499,7 @@ function App() {
         </aside>
         <main>
           <header className="topbar">
-            <div>
-              <span className="eyebrow">GENSHIN IMPACT</span>
-              <div className="profile-picker">
+            <div className="profile-picker">
                 <select
                   aria-label="Профиль"
                   value={app.selected}
@@ -498,8 +507,8 @@ function App() {
                   onChange={e=>app.setSelected(e.target.value)}
                 >
                   {app.state?.profiles.map((p) => (
-                    <option key={p.profile_id} value={p.profile_id}>
-                      {regionNames[p.server_region] ?? p.server_region} ·{" "}
+                    <option key={p.profile_id} value={p.profile_id} title={regionNames[p.server_region]}>
+                      {headerRegionCodes[p.server_region] ?? p.server_region} ·{" "}
                       {p.uid}
                     </option>
                   ))}
@@ -508,12 +517,21 @@ function App() {
                   {current ? "В игре" : "Сохранённый профиль"}
                 </span>
                 {!current&&app.state?.active_game_profile_id&&<button className="follow-game" onClick={app.followGame}>К аккаунту в игре</button>}
-              </div>
             </div>
-            <div className="header-stats" aria-label="Ресурсы выбранного профиля">
+            <div className="header-stats" aria-label="Ранг и ресурсы выбранного профиля">
+              <Stat label="AR" fullLabel="Ранг приключений" value={fmt(data?.collections.adventure?.[0]?.values.rank)} symbol="⌁" />
+              <span className="header-divider" aria-hidden="true" />
               <Stat label="Мора" value={fmt(wallet["202"])} symbol="◈" />
               <Stat label="Камни Истока" value={fmt(wallet["201"])} symbol="✦" />
-              <Stat label="Ранг приключений" value={fmt(data?.collections.adventure?.[0]?.values.rank)} symbol="⌁" />
+              <span className="header-divider" aria-hidden="true" />
+              <ResinStat count={resin?.values.count} nextRecovery={resin?.values.next_recovery_unix_s}
+                live={resin?.confirmation === "observed" && (data?.domains.some(d => d.collection === "wallet" && d.freshness === "synchronized") ?? false)} />
+              <span className="header-divider" aria-hidden="true" />
+              <div className="header-cycles">
+                <AbyssStat values={data?.collections.abyss?.[0]?.values as React.ComponentProps<typeof AbyssStat>["values"]} />
+                <TheaterStat values={data?.collections.theater?.[0]?.values as React.ComponentProps<typeof TheaterStat>["values"]} />
+                <OnslaughtStat values={data?.collections.onslaught?.[0]?.values as React.ComponentProps<typeof OnslaughtStat>["values"]} />
+              </div>
             </div>
             <button
               className="icon-button"
@@ -972,7 +990,9 @@ function App() {
                   />
                 )}
                 {tab === "wishes" && <Wishes key={app.selected} profile={app.selected} tick={app.tick} catalog={catalog} />}
-                {tab === "planner" && <Planner key={app.selected} profile={app.selected} tick={app.tick} data={data} catalog={catalog} />}
+                {tab === "planner" && <Planner key={app.selected} profile={app.selected} tick={app.tick} data={data} catalog={catalog}
+                  requestedGoal={goalRequest && goalRequest.profile===app.selected ? goalRequest.choice : undefined}
+                  onRequestHandled={()=>setGoalRequest(null)} />}
                 {tab === "achievements" && (
                   <Achievements data={data} catalog={catalog} />
                 )}
@@ -1048,6 +1068,12 @@ function App() {
             name={name}
             close={() => {setDetail(null);setDetailParent(null);}}
             openItem={(item)=>{setDetailParent(detail);setDetail(item);}}
+            addGoal={choice=>{
+              setGoalRequest({profile:app.selected,choice});
+              setDetail(null);
+              setDetailParent(null);
+              setTab("planner");
+            }}
             back={detailParent?()=>{setDetail(detailParent);setDetailParent(null);}:undefined}
           />
         )}
@@ -1064,10 +1090,12 @@ function App() {
 }
 function Stat({
   label,
+  fullLabel,
   value,
   symbol,
 }: {
   label: string;
+  fullLabel?: string;
   value: string;
   symbol: string;
 }) {
@@ -1075,7 +1103,7 @@ function Stat({
     <div className="header-stat">
       <span className="header-stat-symbol" aria-hidden="true">{symbol}</span>
       <div>
-        <small>{label}</small>
+        <small>{fullLabel ? <abbr title={fullLabel}>{label}</abbr> : label}</small>
         <strong>{value}</strong>
       </div>
     </div>
@@ -1090,6 +1118,7 @@ function Details({
   close,
   openItem,
   back,
+  addGoal,
 }: {
   row: Row;
   data: ProfileData;
@@ -1098,6 +1127,7 @@ function Details({
   close: () => void;
   openItem: (item:Row)=>void;
   back?: ()=>void;
+  addGoal: (choice:GoalChoice)=>void;
 }) {
   const drawer = useRef<HTMLElement>(null),
     onClose = useRef(close);
@@ -1144,6 +1174,9 @@ function Details({
     isCharacter = !!v.avatar_id;
   const referenceOnly=!!(row as Row & {unowned?:boolean}).unowned;
   const owner = !isCharacter && ["weapons","artifacts"].includes(live.source_collection ?? row.source_collection ?? "") ? equipmentOwners(data.collections.characters).get(live.entity_key) : null;
+  const weapon = (live.source_collection ?? row.source_collection) === "weapons" ||
+    (data.collections.weapons ?? []).some(item => item.entity_key === row.entity_key);
+  const canPlan = isCharacter ? !referenceOnly && !v.trial_avatar_info && v.avatar_id !== 10000134 : weapon;
   const artifactInfo=artifactStats(v,catalog);
   return (
     <div className="drawer-backdrop" onClick={close}>
@@ -1194,6 +1227,7 @@ function Details({
             : v.kind === "weapon" ? `Уровень ${v.level ?? "—"} · Возвышение ${v.ascension ?? "—"}`
             : `Количество ${fmt(v.count)}${v.level !== undefined ? " · Уровень " + v.level : ""}${v.refinement !== undefined ? " · R" + v.refinement : ""}`}
         </div>}
+        {canPlan && <button className="detail-plan-button" type="button" onClick={()=>addGoal({...live,collection:isCharacter?"characters":"weapons"})}>В планировщик</button>}
         {isTraveler(v) && (
           <p className="muted">
             Активная стихия: {elementName(v.skill_depot_id, catalog)}

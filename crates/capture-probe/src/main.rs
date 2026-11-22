@@ -14,6 +14,7 @@ use serde::Serialize;
 use serde_json::{Value, json};
 use tracing_subscriber::prelude::*;
 
+mod abyss;
 mod account_state;
 mod achievement_research;
 mod achievement_state;
@@ -35,12 +36,14 @@ mod inventory;
 mod item_state;
 mod material_research;
 mod material_state;
+mod onslaught;
 mod pcapng;
 mod player_research;
 mod profile_protocol;
 mod profile_state;
 mod recording;
 mod source;
+mod theater;
 mod tracking_health;
 mod transport;
 mod traveler;
@@ -807,6 +810,14 @@ async fn capture(
                                 }
                             }
                             if args.track_materials && !tracking_health.paused() && let Some(body)=diagnostics::command_body(&command) {
+                                if direction.name()=="incoming" && command.command_id==abyss::COMMAND
+                                    && let Ok(snapshot)=abyss::snapshot(body) {
+                                    output.emit("abyss_snapshot",snapshot)?;
+                                }
+                                if direction.name()=="incoming" && command.command_id==theater::COMMAND
+                                    && let Ok(snapshot)=theater::snapshot(body) {
+                                    output.emit("theater_snapshot",snapshot)?;
+                                }
                                 match profile_state.apply(direction.name()=="incoming",command.command_id,body) {
                                     Ok(events)=>for (kind,data) in events {
                                         if kind == "character_added" && let Some(guid)=data["guid"].as_str().and_then(|g|g.parse::<u64>().ok()) {avatar_guids.insert(guid);}

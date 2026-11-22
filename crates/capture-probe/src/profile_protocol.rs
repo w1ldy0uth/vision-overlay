@@ -186,6 +186,23 @@ pub fn constellation_activation(body: &[u8]) -> Result<(u64, u32, u32)> {
     Ok((values[&11], values[&7] as u32, values[&1] as u32))
 }
 
+pub fn uint_fields(body: &[u8], numbers: &[u32]) -> Result<BTreeMap<u32, u32>> {
+    let mut input = CodedInputStream::from_bytes(body);
+    let mut values = BTreeMap::new();
+    while let Some(tag) = input.read_raw_tag_or_eof()? {
+        let field = tag >> 3;
+        if numbers.contains(&field) && tag & 7 == 0 {
+            ensure!(
+                values.insert(field, input.read_uint32()?).is_none(),
+                "Duplicate unsigned field"
+            );
+        } else {
+            protobuf::rt::skip_field_for_tag(tag, &mut input)?;
+        }
+    }
+    Ok(values)
+}
+
 pub fn nested(body: &[u8]) -> Result<Vec<(u32, Vec<u8>)>> {
     ensure!(body.len() <= 2 * 1024 * 1024, "Profile message too large");
     let mut input = CodedInputStream::from_bytes(body);

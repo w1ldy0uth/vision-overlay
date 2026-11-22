@@ -1,4 +1,5 @@
 import {craftFromStock} from './crafting.mjs';
+import {resolveGoalTargets} from './goal-targets.mjs';
 import {planGoal} from './planner.mjs';
 import {expMaterials, observedStock} from './upgrades.mjs';
 
@@ -22,10 +23,11 @@ export function allocateGoals(goals, catalog, data) {
     const reserved=Math.min(left,count);
     available.set(id,left-reserved);return reserved;
   };
-  const ordered=[...goals].sort((a,b)=>a.values.priority-b.values.priority||a.goal_id.localeCompare(b.goal_id));
-  const plans=ordered.map(goal=>{
-    const plan=planGoal(goal,catalog,data);
-    if(plan.status==='unknown')return {goal,plan,materials:[],craftInputs:[],crafts:[],craftMora:0,mora:null,ready:false,experienceMissing:null};
+  const ordered=resolveGoalTargets(goals,catalog,data).sort((a,b)=>a.target.priority-b.target.priority||a.goal.goal_id.localeCompare(b.goal.goal_id));
+  const plans=ordered.map(({goal,target,linkedFrom})=>{
+    const plan=planGoal(target,catalog,data);
+    if(linkedFrom&&!target.entity_key)plan.reason='Экипированное оружие ещё не определено.';
+    if(plan.status==='unknown')return {goal,plan,...(linkedFrom?{linkedFrom}:{}),materials:[],craftInputs:[],crafts:[],craftMora:0,mora:null,ready:false,experienceMissing:null};
     const needs=new Map();let mora=plan.fixedMora,experienceMissing=0,unknownExperience=false;
     const add=(id,count,allocated,uncertain=false)=>{
       if(!count)return;
@@ -75,7 +77,7 @@ export function allocateGoals(goals, catalog, data) {
       for(const input of crafted.inputs)craftInputs.set(input.id,(craftInputs.get(input.id)??0)+input.count);
     }
     const money={id:202,count:mora+craftMora,owned:owned(202),allocated:moraAllocated===null?null:moraAllocated+craftMora,missing:moraAllocated===null?null:mora-moraAllocated};
-    return {goal,plan,materials,mora:money,crafts,craftMora,craftInputs:[...craftInputs].map(([id,count])=>({id,count,owned:owned(id)})),experienceMissing:unknownExperience?null:experienceMissing,
+    return {goal,plan,...(linkedFrom?{linkedFrom}:{}),materials,mora:money,crafts,craftMora,craftInputs:[...craftInputs].map(([id,count])=>({id,count,owned:owned(id)})),experienceMissing:unknownExperience?null:experienceMissing,
       ready:materials.every(m=>m.missing===0)&&money.missing===0};
   });
   const totals=new Map();

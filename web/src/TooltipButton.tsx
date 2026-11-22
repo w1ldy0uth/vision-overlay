@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 export function TooltipButton({
   entry,
   fallback,
+  content,
   children,
   className,
   onClick,
@@ -96,11 +97,11 @@ export function TooltipButton({
             onMouseLeave={hide}
             style={tooltip}
           >
-            <strong>{entry.name ?? fallback}</strong>
-            <p>
-              {entry.description?.replaceAll("{TIMEZONE}", "время сервера") ??
+            <strong>{entry?.name ?? fallback}</strong>
+            {content ?? <p>
+              {entry?.description?.replaceAll("{TIMEZONE}", "время сервера") ??
                 "Описание отсутствует в текущем справочнике."}
-            </p>
+            </p>}
           </div>,
           document.body,
         )}

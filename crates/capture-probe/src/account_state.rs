@@ -8,6 +8,7 @@ use std::collections::BTreeMap;
 pub struct State {
     uid: Option<String>,
     profile: Option<Value>,
+    onslaught: crate::onslaught::State,
     teams: Option<BTreeMap<u64, Value>>,
 }
 impl State {
@@ -26,6 +27,12 @@ impl State {
                 self.uid = Some(uid.into());
             }
             return Ok(out);
+        }
+        if matches!(command, 23766 | 9233)
+            && let Some(uid) = &self.uid
+            && let Ok(Some(snapshot)) = self.onslaught.apply(command, body, uid)
+        {
+            out.push(("onslaught_snapshot", snapshot));
         }
         if matches!(command, 7193 | 22660 | 9233) {
             let Some(uid) = &self.uid else { return Ok(out) };

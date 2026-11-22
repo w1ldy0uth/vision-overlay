@@ -67,6 +67,7 @@ impl Store {
                         | "skill_depot_id"
                         | "talents"
                         | "priority"
+                        | "equipped_weapon"
                 )),
                 "Unknown goal property"
             );
@@ -83,6 +84,25 @@ impl Store {
                     && v["priority"].as_u64().is_some_and(|n| n <= 999),
                 "Invalid goal target"
             );
+            if let Some(weapon) = v.get("equipped_weapon") {
+                let target = weapon
+                    .as_object()
+                    .context("Invalid equipped weapon target")?;
+                ensure!(
+                    collection == "characters"
+                        && target.len() == 2
+                        && weapon["level"]
+                            .as_u64()
+                            .is_some_and(|n| (1..=90).contains(&n))
+                        && weapon["ascension"].as_u64().is_some_and(|n| {
+                            let level = weapon["level"].as_u64().unwrap_or_default();
+                            let caps = [20, 40, 50, 60, 70, 80];
+                            let minimum = caps.iter().filter(|&&cap| cap < level).count() as u64;
+                            n == minimum || (n == minimum + 1 && caps.contains(&level))
+                        }),
+                    "Invalid equipped weapon target"
+                );
+            }
             let duplicate:i64=sqlx::query_scalar("SELECT count(*) FROM planner_goals WHERE profile_id=? AND goal_id!=? AND json_extract(goal_json,'$.collection')=? AND json_extract(goal_json,'$.entity_key')=?").bind(profile).bind(&id).bind(collection).bind(key).fetch_one(&mut *tx).await?;
             ensure!(
                 duplicate == 0,

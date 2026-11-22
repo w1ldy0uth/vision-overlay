@@ -555,12 +555,15 @@ impl Projection {
             }
             "currency_snapshot" | "currency_changed" => {
                 let id = d["item_id"].as_u64().context("Missing currency")?;
-                ensure!(matches!(id, 201 | 202), "Unsupported currency");
+                ensure!(matches!(id, 106 | 201 | 202), "Unsupported currency");
                 let k = id.to_string();
                 let n = d["count"].as_i64().context("Invalid currency count")?;
                 // Legacy permits negative primogems; retain the actual observation explicitly.
                 ensure!(id == 201 || n >= 0, "Negative Mora");
-                let value = json!({"item_id":id,"count":n.to_string()});
+                let mut value = json!({"item_id":id,"count":n.to_string()});
+                if id == 106 {
+                    value["next_recovery_unix_s"] = d["next_recovery_unix_s"].clone();
+                }
                 if kind == "currency_changed" {
                     let old = self.old("wallet", &k)?["count"]
                         .as_str()
@@ -584,6 +587,36 @@ impl Projection {
                         rows: BTreeMap::from([(k, value)]),
                     });
                 }
+            }
+            "onslaught_snapshot" => {
+                let key = "current";
+                crate::core::validate_entity("onslaught", key, d)?;
+                self.snapshot(
+                    "onslaught",
+                    "full",
+                    BTreeMap::from([(key.into(), d.clone())]),
+                    &mut out,
+                )?;
+            }
+            "theater_snapshot" => {
+                let key = "current";
+                crate::core::validate_entity("theater", key, d)?;
+                self.snapshot(
+                    "theater",
+                    "full",
+                    BTreeMap::from([(key.into(), d.clone())]),
+                    &mut out,
+                )?;
+            }
+            "abyss_snapshot" => {
+                let key = "current";
+                crate::core::validate_entity("abyss", key, d)?;
+                self.snapshot(
+                    "abyss",
+                    "full",
+                    BTreeMap::from([(key.into(), d.clone())]),
+                    &mut out,
+                )?;
             }
             "adventure_snapshot" | "adventure_progress_changed" => {
                 let v = &d["current"];

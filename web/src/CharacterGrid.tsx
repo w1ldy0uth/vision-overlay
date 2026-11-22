@@ -17,6 +17,7 @@ export function CharacterGrid({
   favorites,
   toggleFavorite,
   onSelect,
+  rarity,
 }: any) {
   return (
     <div className="character-grid">
@@ -66,7 +67,7 @@ export function CharacterGrid({
                 )}
               </span>
             )}
-            {!r.unowned && (
+            {!r.unowned && toggleFavorite && (
               <button
                 type="button"
                 className={`character-favorite${starred ? " selected" : ""}`}
@@ -90,9 +91,11 @@ export function CharacterGrid({
               <ItemIcon
                 icon={catalog.avatarIcons?.[id]}
                 fallback={name(r.values).slice(0, 1)}
+                rarity={rarity?.(r)}
                 large
               />
               <h3>{name(r.values)}</h3>
+              {rarity?.(r) > 0 && <span className="inventory-card-stars">{"★".repeat(rarity(r))}</span>}
               {r.unowned ? (
                 <small>Не получен</small>
               ) : (

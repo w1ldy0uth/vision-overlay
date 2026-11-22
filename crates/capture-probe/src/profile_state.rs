@@ -13,6 +13,8 @@ pub struct State {
     character_baseline: bool,
     currencies: BTreeMap<u32, i64>,
     adventure: Option<Value>,
+    resin: Option<(u32, Option<u32>)>,
+    resin_baseline: bool,
     talents: BTreeMap<String, Value>,
     constellations: BTreeMap<String, Value>,
     // A notification proves one activation, not the full baseline of another element.
@@ -21,6 +23,39 @@ pub struct State {
     characters: BTreeMap<String, Value>,
     fight_props: BTreeMap<String, Value>,
     traveler_active: BTreeMap<String, Value>,
+}
+
+fn resin_observation(count: u32, next: Option<u32>, command: u16) -> (&'static str, Value) {
+    (
+        "currency_snapshot",
+        json!({"item_id":106,"count":count,"next_recovery_unix_s":next,"command_id":command}),
+    )
+}
+
+// Observed on 7.2: count in field 11, next recovery as Unix seconds in field 12.
+fn resin_notify(body: &[u8]) -> Option<(u32, Option<u32>)> {
+    use protobuf::CodedInputStream;
+    if body.is_empty() || body.len() > 64 {
+        return None;
+    }
+    let mut input = CodedInputStream::from_bytes(body);
+    let (mut count, mut next) = (None, None);
+    while let Some(tag) = input.read_raw_tag_or_eof().ok()? {
+        match tag {
+            88 if count.is_none() => count = Some(input.read_uint32().ok()?),
+            96 if next.is_none() => next = Some(input.read_uint32().ok()?),
+            88 | 96 => return None,
+            _ => protobuf::rt::skip_field_for_tag(tag, &mut input).ok()?,
+        }
+    }
+    if count.is_none() && next.is_none() {
+        return None;
+    }
+    let count = count.unwrap_or(0);
+    if count > 2000 || next.is_some_and(|n| n != 0 && n < 1_600_000_000) {
+        return None;
+    }
+    Some((count, next.filter(|n| *n > 0 && count < 200)))
 }
 
 #[cfg(test)]
@@ -177,6 +212,19 @@ impl State {
         command: u16,
         body: &[u8],
     ) -> Result<Vec<(&'static str, Value)>> {
+        if incoming && command == 24057 {
+            // ResinChangeNotify is independent of the player-property map.
+            // A schema mismatch here must not pause unrelated inventory tracking.
+            let Some((count, next)) = resin_notify(body) else {
+                return Ok(Vec::new());
+            };
+            let before = self.resin.replace((count, next));
+            return if self.resin_baseline && before != self.resin {
+                Ok(vec![resin_observation(count, next, command)])
+            } else {
+                Ok(Vec::new())
+            };
+        }
         if !incoming
             || !matches!(
                 command,
@@ -377,6 +425,7 @@ impl State {
         let fields = nested(body)?;
         let mut seen = HashSet::new();
         let mut currencies = Vec::new();
+        let mut resin_count = None;
         let mut adventure_props = BTreeMap::new();
         let mut friends = Vec::new();
         for (_, bytes) in fields.into_iter().filter(|(field, _)| *field == map_field) {
@@ -405,6 +454,18 @@ impl State {
                     None
                 };
                 currencies.push((id, count, delta));
+            } else if command != 7234 && key == 10020 {
+                if let Ok(prop) = PropValue::parse_from_bytes(&value)
+                    && prop.type_ == 10020
+                    && !prop.has_fval()
+                {
+                    let count = if prop.has_ival() {
+                        prop.ival()
+                    } else {
+                        prop.val
+                    };
+                    resin_count = u32::try_from(count).ok().filter(|count| *count <= 2000);
+                }
             } else if command != 7234 && matches!(key, 10013 | 10014) {
                 let prop = PropValue::parse_from_bytes(&value)?;
                 let number = if prop.has_ival() {
@@ -462,6 +523,22 @@ impl State {
         }
         // All entries are validated before any mutation.
         let mut events = Vec::new();
+        let previous_resin = self.resin;
+        if let Some(count) = resin_count {
+            let next = previous_resin
+                .filter(|(old, _)| *old == count)
+                .and_then(|(_, next)| next);
+            self.resin = Some((count, next));
+        }
+        if command == 7193 {
+            self.resin_baseline = true;
+        }
+        if self.resin_baseline
+            && (command == 7193 || previous_resin != self.resin)
+            && let Some((count, next)) = self.resin
+        {
+            events.push(resin_observation(count, next, command));
+        }
         for (id, count, delta) in currencies {
             if command == 7193 {
                 self.currencies.insert(id, count);
@@ -643,6 +720,31 @@ mod tests {
         state.snapshot(&[json!({"guid":u64::MAX.to_string(),"avatar_id":10000137,"props":{"4001":{"ival":"20"},"1001":{"ival":"0"},"1002":{"ival":"1"}}})]);
         state
     }
+    #[test]
+    fn resin_notification_keeps_the_timer_across_matching_balance_observations() {
+        fn update(count: i64) -> Vec<u8> {
+            let mut property = PropValue::new();
+            property.type_ = 10020;
+            property.set_ival(count);
+            envelope(8, &[(10020, property.write_to_bytes().unwrap())])
+        }
+        let mut packet = Vec::new();
+        {
+            let mut out = CodedOutputStream::vec(&mut packet);
+            out.write_uint32(11, 148).unwrap();
+            out.write_uint32(12, 1_795_364_749).unwrap();
+            out.flush().unwrap();
+        }
+        let mut state = State::default();
+        assert!(state.apply(true, 24057, &packet).unwrap().is_empty());
+        let initial = state.apply(true, 7193, &gems(6, 10)).unwrap();
+        assert_eq!(initial[0].1["next_recovery_unix_s"], 1_795_364_749);
+        assert!(state.apply(true, 22660, &update(148)).unwrap().is_empty());
+        let spent = state.apply(true, 22660, &update(88)).unwrap();
+        assert_eq!(spent[0].1["count"], 88);
+        assert!(spent[0].1["next_recovery_unix_s"].is_null());
+    }
+
     fn gems(field: u32, count: i64) -> Vec<u8> {
         let mut prop = PropValue::new();
         prop.type_ = 10015;
