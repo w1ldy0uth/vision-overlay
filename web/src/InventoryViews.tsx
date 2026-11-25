@@ -1,3 +1,4 @@
+import { tr, uiLocale } from "./i18n.mjs";
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { equipmentOwners } from "./equipment-owners.mjs";
 import type { Row } from "./api";
@@ -21,7 +22,7 @@ export function ItemIcon({
   useEffect(()=>{if(!failed||!icon||attempt>=2)return;const timer=setTimeout(()=>{setAttempt(n=>n+1);setFailed(false);},(attempt+1)*60000);return()=>clearTimeout(timer);},[failed,icon,attempt]);
   return (
     <span
-      title={!icon||failed?"Изображение недоступно":undefined}
+      title={!icon||failed?tr("Изображение недоступно"):undefined}
       className={`item-icon rarity-${rarity}${large ? " item-icon-large" : ""}`}
     >
       {icon && !failed ? (
@@ -67,17 +68,17 @@ export function InventoryGrid({
         );
         const owner = equipment ? owners.get(row.entity_key) : null;
         const count = equipment
-          ? `Ур. ${v.level ?? "—"}`
-          : `${Number(v.count ?? 0).toLocaleString("ru-RU")} шт.`;
+          ? tr("Ур. {0}", v.level ?? "—")
+          : tr("{0} шт.", Number(v.count ?? 0).toLocaleString(uiLocale));
         return (
           <button
             className="inventory-card"
             key={`${row.source_collection}:${row.entity_key}`}
             onClick={() => onSelect(row)}
-            aria-label={`${name(v)}, ${count}${owner ? `, экипировано: ${name(owner.values)}` : ""}`}
+            aria-label={`${name(v)}, ${count}${owner ? tr(", экипировано: {0}", name(owner.values)) : ""}`}
           >
             <ItemIcon icon={items[id]?.icon} rarity={rarity} fallback={name(v).slice(0,1)} large />
-            {owner && <span className="equipment-owner-badge" title={`Экипировано: ${name(owner.values)}`}><ItemIcon icon={avatarIcons[owner.values.avatar_id]} fallback={name(owner.values).slice(0,1)} /></span>}
+            {owner && <span className="equipment-owner-badge" title={tr("Экипировано: {0}", name(owner.values))}><ItemIcon icon={avatarIcons[owner.values.avatar_id]} fallback={name(owner.values).slice(0,1)} /></span>}
             <span className="inventory-card-count">
               {count}
               {row.source_collection === "weapons"
@@ -87,7 +88,7 @@ export function InventoryGrid({
             <span className="inventory-card-name">{name(v)}</span>
             <span className="inventory-card-stars">{"★".repeat(rarity)}</span>
             {row.confirmation !== "observed" && (
-              <small className="inventory-card-old">Из прошлых данных</small>
+              <small className="inventory-card-old">{tr("Из прошлых данных")}</small>
             )}
           </button>
         );

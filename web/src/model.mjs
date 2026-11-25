@@ -1,30 +1,31 @@
+import { tr } from "./i18n.mjs";
 export const collections = {
-  material_stacks: "Материалы",
-  weapons: "Оружие",
-  artifacts: "Артефакты",
-  furniture: "Декор",
-  cosmetics: "Косметика",
-  unknown_items: "Другие предметы",
-  characters: "Персонажи",
-  traveler_depots: "Стихии Путешественника",
-  wallet: "Валюты",
-  teams: "Отряды",
-  player_profile: "Профиль игрока",
-  adventure: "Приключения",
-  achievements: "Достижения",
+  material_stacks: tr("Материалы"),
+  weapons: tr("Оружие"),
+  artifacts: tr("Артефакты"),
+  furniture: tr("Декор"),
+  cosmetics: tr("Косметика"),
+  unknown_items: tr("Другие предметы"),
+  characters: tr("Персонажи"),
+  traveler_depots: tr("Стихии Путешественника"),
+  wallet: tr("Валюты"),
+  teams: tr("Отряды"),
+  player_profile: tr("Профиль игрока"),
+  adventure: tr("Приключения"),
+  achievements: tr("Достижения"),
 };
 export const regions = {
-  os_euro: "Европа",
-  os_asia: "Азия",
-  os_usa: "Америка",
-  os_cht: "Тайвань / Гонконг / Макао",
+  os_euro: tr("Европа"),
+  os_asia: tr("Азия"),
+  os_usa: tr("Америка"),
+  os_cht: tr("Тайвань / Гонконг / Макао"),
 };
 export const freshness = {
-  synchronized: "Синхронизировано",
-  saved: "Сохранённые данные",
-  stale: "Данные устарели",
-  error: "Ошибка источника",
-  awaiting_snapshot: "Ожидается снимок",
+  synchronized: tr("Синхронизировано"),
+  saved: tr("Сохранённые данные"),
+  stale: tr("Данные устарели"),
+  error: tr("Ошибка источника"),
+  awaiting_snapshot: tr("Ожидается снимок"),
 };
 export function newer(a, b) {
   return BigInt(a) > BigInt(b);
@@ -94,21 +95,21 @@ export function describeOperation(o, name) {
       (id) => old.fight_props[id] !== next.fight_props[id],
     );
     if (changed.length)
-      return `${title} · боевые характеристики · изменено: ${changed.length}`;
+      return tr("{0} · боевые характеристики · изменено: {1}", title, changed.length);
   }
   if (o.action === "delete")
-    return `${title} · удалён${old.count !== undefined ? " (было " + old.count + ")" : ""}`;
+    return tr("{0} · удалён{1}", title, old.count !== undefined ? tr(" (было ") + old.count + ")" : "");
   if (Array.isArray(old.equip_guids) && Array.isArray(next.equip_guids)) {
     const before = new Set(old.equip_guids),
       after = new Set(next.equip_guids);
     const removed = [...before].filter((id) => !after.has(id)).length;
     const added = [...after].filter((id) => !before.has(id)).length;
     if (removed || added)
-      return `${title} · смена экипировки · снято: ${removed} · надето: ${added}`;
+      return tr("{0} · смена экипировки · снято: {1} · надето: {2}", title, removed, added);
   }
   if (next.count !== undefined)
     return `${title} · ${old.count ?? "?"} → ${next.count}`;
   if (next.level !== undefined)
-    return `${title} · ур. ${old.level ?? "?"} → ${next.level}`;
+    return tr("{0} · ур. {1} → {2}", title, old.level ?? "?", next.level);
   return title;
 }

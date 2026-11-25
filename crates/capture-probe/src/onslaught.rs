@@ -1,7 +1,10 @@
 use anyhow::{Result, ensure};
+use protobuf::CodedInputStream;
 use serde_json::{Value, json};
 
 use crate::profile_protocol::{nested, uint_fields};
+
+pub const EXALTED_RESPONSE: u16 = 20472;
 
 #[derive(Default)]
 pub struct State {
@@ -10,6 +13,37 @@ pub struct State {
 }
 
 impl State {
+    pub fn exalted_snapshot(&self, body: &[u8]) -> Result<Option<Value>> {
+        let Some((schedule, starts, ends)) = self.schedule else {
+            return Ok(None);
+        };
+        // Observed when opening «Вознесённые»: field 3 contains packed avatar IDs.
+        let mut lists = nested(body)?.into_iter().filter(|(field, _)| *field == 3);
+        let Some((_, packed)) = lists.next() else {
+            return Ok(None);
+        };
+        ensure!(lists.next().is_none(), "Duplicate Onslaught roster field");
+        let mut input = CodedInputStream::from_bytes(&packed);
+        let mut avatars = Vec::new();
+        while !input.eof()? {
+            let id = input.read_uint64()?;
+            ensure!(
+                (10_000_001..11_000_000).contains(&id)
+                    && avatars.len() < 16
+                    && !avatars.contains(&id),
+                "Invalid Onslaught roster"
+            );
+            avatars.push(id);
+        }
+        if avatars.is_empty() {
+            return Ok(None);
+        }
+        Ok(Some(json!({
+            "schedule_id": schedule, "starts_unix_s": starts, "ends_unix_s": ends,
+            "avatar_ids": avatars
+        })))
+    }
+
     pub fn apply(&mut self, command: u16, body: &[u8], uid: &str) -> Result<Option<Value>> {
         let before = self.snapshot();
         match command {

@@ -1,11 +1,12 @@
+import { tr } from "./i18n.mjs";
 import {compareWishes} from "./wish-live.mjs";
 // Only imported records and continuity-checked capture observations participate.
 export const wishGroups = [
-  {id:'characters',name:'События персонажей I + II',types:['301','400'],cap:90},
-  {id:'weapons',name:'Событие оружия',types:['302'],cap:80},
-  {id:'standard',name:'Стандартная молитва',types:['200'],cap:90},
-  {id:'chronicled',name:'Молитва хроник',types:['500'],cap:90},
-  {id:'beginners',name:'Молитва новичка',types:['100'],cap:null},
+  {id:'characters',name:tr("События персонажей I + II"),types:['301','400'],cap:90},
+  {id:'weapons',name:tr("Событие оружия"),types:['302'],cap:80},
+  {id:'standard',name:tr("Стандартная молитва"),types:['200'],cap:90},
+  {id:'chronicled',name:tr("Молитва хроник"),types:['500'],cap:90},
+  {id:'beginners',name:tr("Молитва новичка"),types:['100'],cap:null},
 ];
 const cmp=(a,b)=>a.length-b.length||a.localeCompare(b);
 const normalize=s=>String(s??'').normalize('NFKC').trim().replace(/ё/g,'е').toLocaleLowerCase('ru');
@@ -59,14 +60,14 @@ export function analyzeWishes(records, {catalog={},periods=[],coverage={},zone=n
     const invalid=!!group.cap&&pity>=group.cap;
     let guarantee='not_applicable',reason='';
     if(['characters','weapons'].includes(group.id)) {
-      guarantee='unknown';reason='Для гарантии нужен последний 5★ и подтверждённый состав баннера на дату выпадения.';
+      guarantee='unknown';reason=tr("Для гарантии нужен последний 5★ и подтверждённый состав баннера на дату выпадения.");
       if(last&&exact&&!invalid) {
         const featured=classifyFeatured(last,group.id,catalog,periods,zone);
-        if(featured===false){guarantee='guaranteed';reason='Последний 5★ не был акционным; следующий 5★ — акционный.';}
-        if(featured===true){guarantee='not_guaranteed';reason='Последний 5★ был акционным; событийный гарант сейчас не подтверждён.';}
-      }else if(last&&!exact)reason='Последний 5★ не входит в подтверждённый диапазон последней выгрузки; возможны пропуски.';
+        if(featured===false){guarantee='guaranteed';reason=tr("Последний 5★ не был акционным; следующий 5★ — акционный.");}
+        if(featured===true){guarantee='not_guaranteed';reason=tr("Последний 5★ был акционным; событийный гарант сейчас не подтверждён.");}
+      }else if(last&&!exact)reason=tr("Последний 5★ не входит в подтверждённый диапазон последней выгрузки; возможны пропуски.");
     }else if(group.id==='chronicled') {
-      guarantee='unknown';reason='История не содержит выбранный курс и его изменения. Очки судьбы не восстанавливаются по одним выпадениям.';
+      guarantee='unknown';reason=tr("История не содержит выбранный курс и его изменения. Очки судьбы не восстанавливаются по одним выпадениям.");
     }
     let previous=-1;
     const drops=five.map(r=>{

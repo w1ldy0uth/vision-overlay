@@ -588,11 +588,16 @@ impl Projection {
                     });
                 }
             }
-            "onslaught_snapshot" => {
+            "onslaught_snapshot" | "onslaught_exalted_snapshot" => {
+                let collection = if kind == "onslaught_snapshot" {
+                    "onslaught"
+                } else {
+                    "onslaught_exalted"
+                };
                 let key = "current";
-                crate::core::validate_entity("onslaught", key, d)?;
+                crate::core::validate_entity(collection, key, d)?;
                 self.snapshot(
-                    "onslaught",
+                    collection,
                     "full",
                     BTreeMap::from([(key.into(), d.clone())]),
                     &mut out,

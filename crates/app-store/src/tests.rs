@@ -397,6 +397,72 @@ fn sample(time: i64, count: u32) -> Vec<u8> {
 }
 
 #[tokio::test]
+async fn theater_arcana_survive_a_lower_snapshot_until_the_next_season() {
+    let dir = tempfile::tempdir().unwrap();
+    let mut store = Store::open(&dir.path().join("state.sqlite3"))
+        .await
+        .unwrap();
+    let mut log = Log::new(1000);
+    log.snapshot("1", json!([]), "unverified");
+    let season = |id, starts, arcana| {
+        json!({"schedule_id":id, "starts_unix_s":starts,
+            "ends_unix_s":starts + 30 * 86400, "acts":10, "arcana":arcana, "echo_keys":2})
+    };
+    log.add("1", "theater_snapshot", season(31, 1793502000_i64, 2));
+    log.add("1", "theater_snapshot", season(31, 1793502000_i64, 0));
+    store.import(&log.finish(), &bindings()).await.unwrap();
+    let id = profile(&mut store).await;
+    let best = sqlx::query_scalar::<_, i64>(
+        "SELECT json_extract(value_json,'$.arcana') FROM current_entities WHERE profile_id=? AND collection='theater'",
+    )
+    .bind(&id)
+    .fetch_one(&mut store.connection)
+    .await
+    .unwrap();
+    assert_eq!(best, 2);
+
+    // An existing database may contain the older projector's lowered value.
+    sqlx::query("UPDATE current_entities SET value_json=json_set(value_json,'$.arcana',0) WHERE collection='theater'")
+        .execute(&mut store.connection)
+        .await
+        .unwrap();
+    assert_eq!(
+        store.state(&id).await.unwrap()["collections"]["theater"][0]["values"]["arcana"],
+        2
+    );
+
+    let mut log = Log::new(2000);
+    log.snapshot("1", json!([]), "unverified");
+    log.add("1", "theater_snapshot", season(32, 1796094000_i64, 0));
+    store.import(&log.finish(), &bindings()).await.unwrap();
+    assert_eq!(
+        store.state(&id).await.unwrap()["collections"]["theater"][0]["values"]["arcana"],
+        Value::Null
+    );
+}
+
+#[tokio::test]
+async fn onslaught_exalted_roster_is_saved_without_a_personal_record() {
+    let dir = tempfile::tempdir().unwrap();
+    let mut store = Store::open(&dir.path().join("state.sqlite3"))
+        .await
+        .unwrap();
+    let mut log = Log::new(1000);
+    log.snapshot("1", json!([]), "unverified");
+    let roster = json!({"schedule_id":5269013, "starts_unix_s":1794387600,
+        "ends_unix_s":1797303599, "avatar_ids":[10000089,10000130]});
+    log.add("1", "onslaught_exalted_snapshot", roster.clone());
+    store.import(&log.finish(), &bindings()).await.unwrap();
+    let id = profile(&mut store).await;
+    let state = store.state(&id).await.unwrap();
+    assert_eq!(
+        state["collections"]["onslaught_exalted"][0]["values"],
+        roster
+    );
+    assert!(state["collections"]["onslaught"].is_null());
+}
+
+#[tokio::test]
 async fn restart_and_duplicate_preserve_exact_state_and_large_guid() {
     let dir = tempfile::tempdir().unwrap();
     let path = dir.path().join("state.sqlite3");

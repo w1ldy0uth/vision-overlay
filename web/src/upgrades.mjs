@@ -1,3 +1,4 @@
+import { tr } from "./i18n.mjs";
 import { progressionReference } from "./progression.mjs";
 
 const integer = (v) => {
@@ -194,7 +195,7 @@ export function nextUpgrades(values, catalog, data) {
   ) {
     progress = {
       kind: "unknown",
-      reason: "Уровень или этап возвышения не подтверждён.",
+      reason: tr("Уровень или этап возвышения не подтверждён."),
     };
   } else if (level === current.maxLevel) {
     const next = path[String(ascension + 1)];
@@ -204,13 +205,13 @@ export function nextUpgrades(values, catalog, data) {
           data,
           [
             rank === null
-              ? "Ранг приключений не получен."
+              ? tr("Ранг приключений не получен.")
               : rank < next.requiredAdventureRank
-                ? `Нужен ранг приключений ${next.requiredAdventureRank}.`
+                ? tr("Нужен ранг приключений {0}.", next.requiredAdventureRank)
                 : null,
           ],
         )
-      : { kind: "max", reason: "Достигнут максимальный уровень." };
+      : { kind: "max", reason: tr("Достигнут максимальный уровень.") };
   } else {
     const l = catalog.leveling;
     const rarity = integer(catalog.rarities[String(values.item_id)]);
@@ -229,7 +230,7 @@ export function nextUpgrades(values, catalog, data) {
     ) {
       progress = {
         kind: "unknown",
-        reason: "Для расчёта нужны подтверждённый опыт и таблица уровней.",
+        reason: tr("Для расчёта нужны подтверждённый опыт и таблица уровней."),
       };
     } else {
       const plan = expMaterials(required - exp, definitions, (id) =>
@@ -238,7 +239,7 @@ export function nextUpgrades(values, catalog, data) {
       if (!plan)
         progress = {
           kind: "unknown",
-          reason: "Не удалось подобрать материалы опыта.",
+          reason: tr("Не удалось подобрать материалы опыта."),
         };
       else {
         const preview = levelPreview(
@@ -274,30 +275,30 @@ export function nextUpgrades(values, catalog, data) {
       return {
         skillId: t.skillId,
         kind: "unknown",
-        reason: "Базовый уровень таланта не получен.",
+        reason: tr("Базовый уровень таланта не получен."),
       };
     if (!step)
       return {
         skillId: t.skillId,
         kind: "max",
-        reason: "Достигнут максимальный базовый уровень.",
+        reason: tr("Достигнут максимальный базовый уровень."),
       };
     return assess(
       { kind: "talent", skillId: t.skillId, from: base, to: base + 1, ...step },
       data,
       [
         step.requiredLevel === null
-          ? "Требование к уровню не сопоставлено со справочником."
+          ? tr("Требование к уровню не сопоставлено со справочником.")
           : null,
         ascension === null
-          ? "Этап возвышения не получен."
+          ? tr("Этап возвышения не получен.")
           : ascension < step.requiredAscension
-            ? `Нужно возвышение ${step.requiredAscension} (ур. ${step.requiredLevel}).`
+            ? tr("Нужно возвышение {0} (ур. {1}).", step.requiredAscension, step.requiredLevel)
             : null,
         level === null
-          ? "Уровень персонажа не получен."
+          ? tr("Уровень персонажа не получен.")
           : step.requiredLevel !== null && level < step.requiredLevel
-            ? `Нужен уровень ${step.requiredLevel}.`
+            ? tr("Нужен уровень {0}.", step.requiredLevel)
             : null,
       ],
     );

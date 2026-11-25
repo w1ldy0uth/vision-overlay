@@ -1,3 +1,4 @@
+import { tr } from "./i18n.mjs";
 import { levelTargets, targetIndex } from "./goal-targets.mjs";
 
 type Target = { level: number; ascension: number };
@@ -20,7 +21,7 @@ export function LevelTarget({ value, max = 90, onChange }: {
 
   return <div className="goal-level-control">
     <details className="goal-level-options">
-      <summary>Уровень <strong>{label(current)}</strong></summary>
+      <summary>{tr("Уровень ")}<strong>{label(current)}</strong></summary>
       <div className="goal-level-grid">
         {checkpoints.filter(level => level <= max).map(level => {
           const atLevel = targets.filter(target => target.level === level);
@@ -35,9 +36,9 @@ export function LevelTarget({ value, max = 90, onChange }: {
       </div>
     </details>
     <div className="goal-level-step">
-      <button type="button" aria-label="Повысить целевой уровень" disabled={index >= targets.length - 1} onClick={() => select(targets[index + 1])}>+</button>
-      <button type="button" aria-label="Понизить целевой уровень" disabled={index <= 0} onClick={() => select(targets[index - 1])}>−</button>
+      <button type="button" aria-label={tr("Повысить целевой уровень")} disabled={index >= targets.length - 1} onClick={() => select(targets[index + 1])}>+</button>
+      <button type="button" aria-label={tr("Понизить целевой уровень")} disabled={index <= 0} onClick={() => select(targets[index - 1])}>−</button>
     </div>
-    <span className="footnote">Возвышение {current.ascension}</span>
+    <span className="footnote">{tr("Возвышение ")}{current.ascension}</span>
   </div>;
 }

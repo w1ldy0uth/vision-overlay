@@ -1,0 +1,430 @@
+{
+  "schema_version": 1,
+  "schedule_id": 125,
+  "starts_server_time": "2026-11-16 04:00:00",
+  "ends_server_time_inclusive": "2026-12-16 03:59:59",
+  "source_revision": "a311cd77d7dafbd2bedc7d3cac4e986c6125b586",
+  "sources": {
+    "rooms": "https://static.nanoka.cc/gi/7.2/en/tower/125.json",
+    "buffs_11_12": "https://genshin.hoyoverse.com/en/news/detail/167187",
+    "preview_11_12": "4850614044434359632.json"
+  },
+  "floors": [
+    {
+      "floor": 9,
+      "buffs": [
+        {
+          "half": null,
+          "text": "Урон Звёздного рассеивания, наносимый персонажем, увеличен на 50%."
+        }
+      ],
+      "chambers": [
+        {
+          "chamber": 1,
+          "level": 72,
+          "halves": [
+            {
+              "half": 1,
+              "source": "nanoka",
+              "enemies": [
+                {
+                  "describe_id": 51301,
+                  "name": "Крылатый рыцарь с алебардой"
+                },
+                {
+                  "describe_id": 51302,
+                  "name": "Крылатый парящий рыцарь"
+                }
+              ]
+            },
+            {
+              "half": 2,
+              "source": "nanoka",
+              "enemies": [
+                {
+                  "describe_id": 30851,
+                  "name": "Сухопутный крейсер: Новейший многоцелевой штурмовик"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "chamber": 2,
+          "level": 74,
+          "halves": [
+            {
+              "half": 1,
+              "source": "nanoka",
+              "enemies": [
+                {
+                  "describe_id": 51301,
+                  "name": "Крылатый рыцарь с алебардой"
+                },
+                {
+                  "describe_id": 51312,
+                  "name": "Волкодлак-громила"
+                }
+              ]
+            },
+            {
+              "half": 2,
+              "source": "nanoka",
+              "enemies": [
+                {
+                  "describe_id": 30853,
+                  "name": "Сухопутный крейсер: Новейшая наземная огневая поддержка"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "chamber": 3,
+          "level": 76,
+          "halves": [
+            {
+              "half": 1,
+              "source": "nanoka",
+              "enemies": [
+                {
+                  "describe_id": 51380,
+                  "name": "Часть молодого дерева"
+                },
+                {
+                  "describe_id": 51370,
+                  "name": "Суровый леший-старейшина"
+                }
+              ]
+            },
+            {
+              "half": 2,
+              "source": "nanoka",
+              "enemies": [
+                {
+                  "describe_id": 30853,
+                  "name": "Сухопутный крейсер: Новейшая наземная огневая поддержка"
+                },
+                {
+                  "describe_id": 30851,
+                  "name": "Сухопутный крейсер: Новейший многоцелевой штурмовик"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "floor": 10,
+      "buffs": [
+        {
+          "half": null,
+          "text": "Урон реакции Звёздный проводник, наносимый персонажем, увеличен на 50%."
+        }
+      ],
+      "chambers": [
+        {
+          "chamber": 1,
+          "level": 80,
+          "halves": [
+            {
+              "half": 1,
+              "source": "nanoka",
+              "enemies": [
+                {
+                  "describe_id": 51310,
+                  "name": "Волкодлак-метатель"
+                },
+                {
+                  "describe_id": 51314,
+                  "name": "Волкодлак-налётчик"
+                }
+              ]
+            },
+            {
+              "half": 2,
+              "source": "nanoka",
+              "enemies": [
+                {
+                  "describe_id": 30791,
+                  "name": "Опричник: Штурмовик огненного клинка"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "chamber": 2,
+          "level": 82,
+          "halves": [
+            {
+              "half": 1,
+              "source": "nanoka",
+              "enemies": [
+                {
+                  "describe_id": 51326,
+                  "name": "Левмастиф-страж"
+                },
+                {
+                  "describe_id": 51328,
+                  "name": "Связной канала"
+                }
+              ]
+            },
+            {
+              "half": 2,
+              "source": "nanoka",
+              "enemies": [
+                {
+                  "describe_id": 30793,
+                  "name": "Опричник: Громовой гвардеец"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "chamber": 3,
+          "level": 85,
+          "halves": [
+            {
+              "half": 1,
+              "source": "nanoka",
+              "enemies": [
+                {
+                  "describe_id": 51350,
+                  "name": "Колдун льдов"
+                },
+                {
+                  "describe_id": 51351,
+                  "name": "Стражник льдов"
+                }
+              ]
+            },
+            {
+              "half": 2,
+              "source": "nanoka",
+              "enemies": [
+                {
+                  "describe_id": 30793,
+                  "name": "Опричник: Громовой гвардеец"
+                },
+                {
+                  "describe_id": 30791,
+                  "name": "Опричник: Штурмовик огненного клинка"
+                },
+                {
+                  "describe_id": 30761,
+                  "name": "Опричник: Санитар"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "floor": 11,
+      "buffs": [
+        {
+          "half": null,
+          "text": "+60% к бонусу Электро урона и +60% к бонусу Гео урона для всего отряда."
+        }
+      ],
+      "chambers": [
+        {
+          "chamber": 1,
+          "level": 88,
+          "halves": [
+            {
+              "half": 1,
+              "source": "pt19_preview",
+              "enemies": [
+                {
+                  "describe_id": 51337,
+                  "name": "Ловчий воющих волков"
+                },
+                {
+                  "describe_id": 51336,
+                  "name": "Безумец с бивнями"
+                },
+                {
+                  "describe_id": 40302,
+                  "name": "Дракон руин: Страж земли"
+                }
+              ]
+            },
+            {
+              "half": 2,
+              "source": "pt19_preview",
+              "enemies": [
+                {
+                  "describe_id": 21401,
+                  "name": "Рыболов скрытых глубин"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "chamber": 2,
+          "level": 90,
+          "halves": [
+            {
+              "half": 1,
+              "source": "pt19_preview",
+              "enemies": [
+                {
+                  "describe_id": 51370,
+                  "name": "Суровый леший-старейшина"
+                },
+                {
+                  "describe_id": 63108,
+                  "name": "Химера-скорпион"
+                },
+                {
+                  "describe_id": 51380,
+                  "name": "Часть молодого дерева"
+                },
+                {
+                  "describe_id": 63107,
+                  "name": "Копытная химера-крокодил"
+                }
+              ]
+            },
+            {
+              "half": 2,
+              "source": "pt19_preview",
+              "enemies": [
+                {
+                  "describe_id": 63004,
+                  "name": "Лучезарный ледниковый волк"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "chamber": 3,
+          "level": 92,
+          "halves": [
+            {
+              "half": 1,
+              "source": "pt19_preview",
+              "enemies": [
+                {
+                  "describe_id": 901,
+                  "name": "Ледяное отражение"
+                }
+              ]
+            },
+            {
+              "half": 2,
+              "source": "pt19_preview",
+              "enemies": [
+                {
+                  "describe_id": 21310,
+                  "name": "Охотник пустошей"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "floor": 12,
+      "buffs": [
+        {
+          "half": 1,
+          "text": "Урон от реакции Лунный кристалл увеличен на 75%."
+        },
+        {
+          "half": 2,
+          "text": "Мастерство стихий всех членов отряда увеличено на 200 ед."
+        }
+      ],
+      "chambers": [
+        {
+          "chamber": 1,
+          "level": 95,
+          "halves": [
+            {
+              "half": 1,
+              "source": "pt19_preview",
+              "enemies": [
+                {
+                  "describe_id": 123,
+                  "name": "Бывалый призматический слайм"
+                }
+              ]
+            },
+            {
+              "half": 2,
+              "source": "pt19_preview",
+              "enemies": [
+                {
+                  "describe_id": 51346,
+                  "name": "Удерживающий волны"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "chamber": 2,
+          "level": 98,
+          "halves": [
+            {
+              "half": 1,
+              "source": "pt19_preview",
+              "enemies": [
+                {
+                  "describe_id": 810,
+                  "name": "Повелитель морозной ночи"
+                }
+              ]
+            },
+            {
+              "half": 2,
+              "source": "pt19_preview",
+              "enemies": [
+                {
+                  "describe_id": 51352,
+                  "name": "Разящая вьюга"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "chamber": 3,
+          "level": 100,
+          "halves": [
+            {
+              "half": 1,
+              "source": "pt19_preview",
+              "enemies": [
+                {
+                  "describe_id": 63021,
+                  "name": "Лучезарный лунный геккон"
+                }
+              ]
+            },
+            {
+              "half": 2,
+              "source": "pt19_preview",
+              "enemies": [
+                {
+                  "describe_id": 40211,
+                  "name": "Бесконечный механический массив"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

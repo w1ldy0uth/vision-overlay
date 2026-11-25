@@ -1,3 +1,4 @@
+import { tr } from "./i18n.mjs";
 import { useEffect, useState } from "react";
 import { TooltipButton } from "./TooltipButton";
 
@@ -8,7 +9,7 @@ function duration(seconds: number) {
   const hours = Math.floor(seconds / 3600);
   const minutes = Math.floor(seconds / 60) % 60;
   const remainder = seconds % 60;
-  return hours ? `${hours} ч ${minutes} мин ${remainder} с` : `${minutes} мин ${remainder} с`;
+  return hours ? tr("{0} ч {1} мин {2} с", hours, minutes, remainder) : tr("{0} мин {1} с", minutes, remainder);
 }
 
 export function ResinStat({ count, nextRecovery, live }: {
@@ -33,18 +34,18 @@ export function ResinStat({ count, nextRecovery, live }: {
   const next = recovering ? remaining + gained * interval : null;
   const full = next !== null && current !== null ? next + (cap - current - 1) * interval : null;
 
-  return <TooltipButton className="header-stat resin-stat" fallback="Первородная смола"
+  return <TooltipButton className="header-stat resin-stat" fallback={tr("Первородная смола")}
     content={<div className="resin-tooltip">
-      {current === null ? <span>Ожидаем данные захвата.</span> :
-        current >= cap ? <span>Первородная смола полностью восстановлена.</span> :
-        next === null || full === null ? <span>Время восстановления пока недоступно.</span> :
+      {current === null ? <span>{tr("Ожидаем данные захвата.")}</span> :
+        current >= cap ? <span>{tr("Первородная смола полностью восстановлена.")}</span> :
+        next === null || full === null ? <span>{tr("Время восстановления пока недоступно.")}</span> :
         <>
-          <div><span>До следующего восстановления</span><b>{duration(next)}</b></div>
-          <div><span>До полного восстановления</span><b>{duration(full)}</b></div>
+          <div><span>{tr("До следующего восстановления")}</span><b>{duration(next)}</b></div>
+          <div><span>{tr("До полного восстановления")}</span><b>{duration(full)}</b></div>
         </>}
-      {current !== null && !live && <small>{nextRecovery ? "Расчёт по последним сохранённым данным." : "Последнее сохранённое значение."}</small>}
+      {current !== null && !live && <small>{nextRecovery ? tr("Расчёт по последним сохранённым данным.") : tr("Последнее сохранённое значение.")}</small>}
     </div>}>
     <span className="header-stat-symbol resin-symbol" aria-hidden="true">◔</span>
-    <span><small>Первородная смола</small><strong>{current ?? "—"}/{cap}</strong></span>
+    <span><small>{tr("Первородная смола")}</small><strong>{current ?? "—"}/{cap}</strong></span>
   </TooltipButton>;
 }

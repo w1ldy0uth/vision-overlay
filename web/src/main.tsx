@@ -1,3 +1,4 @@
+import { gameText, language, loadGameLanguage, localizeGameData, setLanguage, tr, uiLocale } from "./i18n.mjs";
 import {DiagnosticExport} from "./DiagnosticExport";
 import {artifactStats} from "./equipment-details.mjs";
 import { WeaponDetails, ArtifactSetDetails } from "./EquipmentDetails";
@@ -8,8 +9,15 @@ import { equipmentOwners } from "./equipment-owners.mjs";
 import {gameSession,selectedProfile} from "./profile-selection.mjs";
 import {useInventoryWindow} from "./useInventoryWindow";
 import { AbyssStat, TheaterStat, OnslaughtStat } from "./AbyssStat";
+import { AbyssView } from "./AbyssView";
+import { TheaterView } from "./TheaterView";
+import { OnslaughtView } from "./OnslaughtView";
 import { ResinStat } from "./ResinStat";
+import { observedStock } from "./upgrades.mjs";
 import { Planner } from "./PlanningView";
+import { DungeonsView } from "./DungeonsView";
+import { GuidesView } from "./GuidesView";
+import { WorldMapView } from "./WorldMapView";
 import type { GoalChoice } from "./GoalPicker";
 import { Wishes } from "./Wishes";
 import { talentLevels } from "./talents.mjs";
@@ -52,6 +60,7 @@ import "./style.css";
 type Catalog = {
   equipmentDetails?: any;
   characterDetails?: any;
+  originalWishNames?: Pick<Catalog, "avatarNames" | "names">;
   progression?: any;
   leveling?: any;
   skillMetadata?: Record<string, any>;
@@ -99,36 +108,36 @@ const headerRegionCodes: Record<string, string> = {
   os_cht: "TW/HK/MO",
 };
 const fmt = (v: unknown) =>
-  v === null || v === undefined ? "—" : Number(v).toLocaleString("ru-RU");
+  v === null || v === undefined ? "—" : Number(v).toLocaleString(uiLocale);
 const date = (v: unknown) =>
-  v ? new Date(Number(v)).toLocaleString("ru-RU") : "Время неизвестно";
+  v ? new Date(Number(v)).toLocaleString(uiLocale) : tr("Время неизвестно");
 const propNames: Record<string, string> = {
   HP: "HP",
   HP_PERCENT: "HP",
-  ATTACK: "Сила атаки",
-  ATTACK_PERCENT: "Сила атаки",
-  DEFENSE: "Защита",
-  DEFENSE_PERCENT: "Защита",
-  CRITICAL: "Шанс крит. попадания",
-  CRITICAL_HURT: "Крит. урон",
-  CHARGE_EFFICIENCY: "Восст. энергии",
-  ELEMENT_MASTERY: "Мастерство стихий",
-  HEAL_ADD: "Бонус лечения",
-  FIRE_ADD_HURT: "Бонус Пиро",
-  WATER_ADD_HURT: "Бонус Гидро",
-  ICE_ADD_HURT: "Бонус Крио",
-  ELEC_ADD_HURT: "Бонус Электро",
-  WIND_ADD_HURT: "Бонус Анемо",
-  ROCK_ADD_HURT: "Бонус Гео",
-  GRASS_ADD_HURT: "Бонус Дендро",
-  PHYSICAL_ADD_HURT: "Бонус физ. урона",
+  ATTACK: tr("Сила атаки"),
+  ATTACK_PERCENT: tr("Сила атаки"),
+  DEFENSE: tr("Защита"),
+  DEFENSE_PERCENT: tr("Защита"),
+  CRITICAL: tr("Шанс крит. попадания"),
+  CRITICAL_HURT: tr("Крит. урон"),
+  CHARGE_EFFICIENCY: tr("Восст. энергии"),
+  ELEMENT_MASTERY: tr("Мастерство стихий"),
+  HEAL_ADD: tr("Бонус лечения"),
+  FIRE_ADD_HURT: tr("Бонус Пиро"),
+  WATER_ADD_HURT: tr("Бонус Гидро"),
+  ICE_ADD_HURT: tr("Бонус Крио"),
+  ELEC_ADD_HURT: tr("Бонус Электро"),
+  WIND_ADD_HURT: tr("Бонус Анемо"),
+  ROCK_ADD_HURT: tr("Бонус Гео"),
+  GRASS_ADD_HURT: tr("Бонус Дендро"),
+  PHYSICAL_ADD_HURT: tr("Бонус физ. урона"),
 };
 function statName(type: string) {
   return propNames[type.replace("FIGHT_PROP_", "")] ?? type;
 }
 function statValue(type: string, v: number) {
   return /PERCENT|CRITICAL|CHARGE_EFFICIENCY|ADD_HURT|HEAL_ADD/.test(type)
-    ? `${(v * 100).toLocaleString("ru-RU", { maximumFractionDigits: 1 })}%`
+    ? `${(v * 100).toLocaleString(uiLocale, { maximumFractionDigits: 1 })}%`
     : fmt(Math.round(v));
 }
 function useApp() {
@@ -260,15 +269,38 @@ function useApp() {
     tick,
   };
 }
+function pageRoute() {
+  const hash = window.location.hash;
+  if (/^#guides(?:\/\d+)?$/.test(hash) ||
+      hash === "#abyss" || hash === "#theater" || hash === "#onslaught" || hash === "#dungeons" || hash === "#map") return hash.slice(1);
+  return null;
+}
+
+function initialTab() {
+  const tab = sessionStorage.getItem("vo.language.return-tab");
+  sessionStorage.removeItem("vo.language.return-tab");
+  return tab ?? "profile";
+}
+
 function App() {
   const [settingsOpen,setSettingsOpen]=useState(false);
+  const [linkedTab, setLinkedTab] = useState(pageRoute);
+  useEffect(() => {
+    const update = () => {
+      const route = pageRoute();
+      setLinkedTab(route);
+      if (route) window.scrollTo(0, 0);
+    };
+    window.addEventListener("hashchange", update);
+    return () => window.removeEventListener("hashchange", update);
+  }, []);
   const [copied, setCopyState] = useState(false),
     [copyError, setCopyErrorState] = useState(false);
   const app = useApp(),
     [catalog, setCatalog] = useState<Catalog>(emptyCatalog),
     [catalogError, setCatalogError] = useState(false),
     [catalogTick, setCatalogTick] = useState(0),
-    [tab, setTab] = useState("inventory"),
+    [baseTab, setBaseTab] = useState(initialTab),
     [category, setCategory] = useState(() => {
       const saved = localStorage.getItem("vo.inventory.category");
       return inventoryCategories.some(([id]) => id === saved)
@@ -297,6 +329,14 @@ function App() {
       }
     }),
     [detail, setDetail] = useState<Row | null>(null);
+  const tab = linkedTab?.split("/")[0] ?? baseTab;
+  function setTab(next: string) {
+    if (linkedTab) {
+      window.history.replaceState(null, "", window.location.pathname + window.location.search);
+      setLinkedTab(null);
+    }
+    setBaseTab(next);
+  }
   const [goalRequest, setGoalRequest] = useState<{profile: string; choice: GoalChoice} | null>(null);
   const [detailParent,setDetailParent]=useState<Row|null>(null);
   const [selectedElements,setSelectedElements]=useState<string[]>([]);
@@ -329,7 +369,16 @@ function App() {
         if (!disposed) {
           catalogVersion.current =
             response.headers.get("x-catalog-version") ?? "bundled";
-          setCatalog(value);
+          setCatalog(language === "en" ? {
+            ...value,
+            originalWishNames: { names: value.names, avatarNames: value.avatarNames },
+            names: localizeGameData(value.names),
+            avatarNames: localizeGameData(value.avatarNames),
+            skillNames: localizeGameData(value.skillNames),
+            achievements: localizeGameData(value.achievements),
+            characterDetails: localizeGameData(value.characterDetails),
+            equipmentDetails: localizeGameData(value.equipmentDetails),
+          } : value);
           setCatalogError(false);
         }
       } catch {
@@ -387,9 +436,9 @@ function App() {
   ]);
   const name = (v: Record<string, any>) =>
     v.avatar_id
-      ? (catalog.avatarNames[String(v.avatar_id)] ?? `Персонаж ${v.avatar_id}`)
+      ? (catalog.avatarNames[String(v.avatar_id)] ?? tr("Персонаж {0}", v.avatar_id))
       : (catalog.names[String(v.item_id)] ??
-        `Предмет ${v.item_id ?? "без ID"}`);
+        tr("Предмет {0}", v.item_id ?? tr("без ID")));
   const data = app.data,
     profile = app.state?.profiles.find((p) => p.profile_id === app.selected),
     current = app.state?.active_game_profile_id === app.selected;
@@ -429,7 +478,7 @@ function App() {
         (r.guids ?? []).join(" "),
         String(r.values.item_id ?? r.values.avatar_id),
       ].some((v) =>
-        v.toLocaleLowerCase("ru").includes(search.toLocaleLowerCase("ru")),
+        v.toLocaleLowerCase(uiLocale).includes(search.toLocaleLowerCase(uiLocale)),
       ),
     );
     return [...list].sort((a, b) =>
@@ -440,7 +489,7 @@ function App() {
           : sort === "level"
             ? characterLevel(b.values) - characterLevel(a.values) ||
               Number(b.values.level ?? 0) - Number(a.values.level ?? 0)
-            : name(a.values).localeCompare(name(b.values), "ru")),
+            : name(a.values).localeCompare(name(b.values), uiLocale)),
     );
   }, [rawRows, category, tab, search, sort, catalog, subtype, rarityFilter, favoritesByProfile, app.selected, selectedElements]);
   const windowKey=JSON.stringify([app.selected,tab,category,search,sort,subtype,rarityFilter,inventoryView,selectedElements]);
@@ -458,7 +507,7 @@ function App() {
     <CatalogIconVersion.Provider value={catalogVersion.current}>
       <div className="layout">
         <aside className="sidebar">
-          <a className="brand" href="/" aria-label="Vision Overlay, главная">
+          <a className="brand" href="/" aria-label={tr("Vision Overlay, главная")}>
             <span className="brand-mark">◇</span>
             <span>
               VISION<span className="brand-sub">OVERLAY</span>
@@ -466,18 +515,20 @@ function App() {
           </a>
           <nav>
             {[
-              ["profile", "◈", "Профиль"],
-              ["teams", "♧", "Отряды"],
-              ["inventory", "▦", "Инвентарь"],
-              ["characters", "♙", "Персонажи"],
-              ["achievements", "✧", "Достижения"],
-              ["wishes", "✦", "Молитвы"],
-              ["planner", "◎", "Планировщик"],
+              ["profile", "◈", tr("Профиль")],
+              ["planner", "◎", tr("Планировщик")],
+              ["dungeons", "▣", tr("Подземелья")],
+              ["guides", "▤", tr("Гайды")],
+              ["map", "⌖", tr("Интерактивная карта")],
             ].map(([id, icon, title]) => (
               <button
                 key={id}
                 className={tab === id ? "nav active" : "nav"}
                 onClick={() => {
+                  if (id === "guides" || id === "map") {
+                    window.location.hash = id;
+                    return;
+                  }
                   setTab(id);
                   setSearch("");
                 }}
@@ -487,23 +538,31 @@ function App() {
               </button>
             ))}
             <details className="settings-nav" open={settingsOpen} onToggle={e=>setSettingsOpen(e.currentTarget.open)}>
-              <summary className={`nav settings-toggle${["history","captures","backups","maintenance","catalog"].includes(tab)?" active":""}`}><span>⚙</span>Настройки</summary>
-              <div className="settings-subnav">{[["history","↔","История изменений"],["captures","◷","Захваты и снимки"],["backups","⇩","Резервные копии"],["maintenance","◴","Хранение данных"],["catalog","⌘","Справочник"]].map(([id,icon,title])=><button key={id} className={tab===id?"nav active":"nav"} onClick={()=>{setTab(id);setSearch("");}}><span>{icon}</span>{title}</button>)}</div>
+              <summary className={`nav settings-toggle${["history","captures","backups","maintenance","catalog"].includes(tab)?" active":""}`}><span>⚙</span>{tr("Настройки")}</summary>
+              <div className="settings-subnav">{[["history","↔",tr("История изменений")],["captures","◷",tr("Захваты и снимки")],["backups","⇩",tr("Резервные копии")],["maintenance","◴",tr("Хранение данных")],["catalog","⌘",tr("Справочник")]].map(([id,icon,title])=><button key={id} className={tab===id?"nav active":"nav"} onClick={()=>{setTab(id);setSearch("");}}><span>{icon}</span>{title}</button>)}</div>
             </details>
           </nav>
+          <select className="language-picker" aria-label={language === "en" ? "Interface language" : "Язык интерфейса"}
+            value={language} onChange={event => {
+              sessionStorage.setItem("vo.language.return-tab", baseTab);
+              setLanguage(event.target.value === "en" ? "en" : "ru");
+            }}>
+            <option value="ru" lang="ru">Русский</option>
+            <option value="en" lang="en">English</option>
+          </select>
           <div className="sidebar-bottom">
             <span className={"dot " + (app.connected ? "green" : "amber")} />
-            {app.connected ? "Связь с приложением" : "Восстанавливаем связь"}
-            <small>Локальное хранилище · SQLite</small>
+            {app.connected ? tr("Связь с приложением") : tr("Восстанавливаем связь")}
+            <small>{tr("Локальное хранилище · SQLite")}</small>
           </div>
         </aside>
         <main>
           <header className="topbar">
             <div className="profile-picker">
                 <select
-                  aria-label="Профиль"
+                  aria-label={tr("Профиль")}
                   value={app.selected}
-                  title="Просмотр сохранённых профилей. При новом входе профиль переключится автоматически."
+                  title={tr("Просмотр сохранённых профилей. При новом входе профиль переключится автоматически.")}
                   onChange={e=>app.setSelected(e.target.value)}
                 >
                   {app.state?.profiles.map((p) => (
@@ -514,15 +573,15 @@ function App() {
                   ))}
                 </select>
                 <span className={"pill " + (current ? "live" : "")}>
-                  {current ? "В игре" : "Сохранённый профиль"}
+                  {current ? tr("В игре") : tr("Сохранённый профиль")}
                 </span>
-                {!current&&app.state?.active_game_profile_id&&<button className="follow-game" onClick={app.followGame}>К аккаунту в игре</button>}
+                {!current&&app.state?.active_game_profile_id&&<button className="follow-game" onClick={app.followGame}>{tr("К аккаунту в игре")}</button>}
             </div>
-            <div className="header-stats" aria-label="Ранг и ресурсы выбранного профиля">
-              <Stat label="AR" fullLabel="Ранг приключений" value={fmt(data?.collections.adventure?.[0]?.values.rank)} symbol="⌁" />
+            <div className="header-stats" aria-label={tr("Ранг и ресурсы выбранного профиля")}>
+              <Stat label="AR" fullLabel={tr("Ранг приключений")} value={fmt(data?.collections.adventure?.[0]?.values.rank)} symbol="⌁" />
               <span className="header-divider" aria-hidden="true" />
-              <Stat label="Мора" value={fmt(wallet["202"])} symbol="◈" />
-              <Stat label="Камни Истока" value={fmt(wallet["201"])} symbol="✦" />
+              <Stat label={tr("Мора")} value={fmt(wallet["202"])} symbol="◈" />
+              <Stat label={tr("Камни Истока")} value={fmt(wallet["201"])} symbol="✦" />
               <span className="header-divider" aria-hidden="true" />
               <ResinStat count={resin?.values.count} nextRecovery={resin?.values.next_recovery_unix_s}
                 live={resin?.confirmation === "observed" && (data?.domains.some(d => d.collection === "wallet" && d.freshness === "synchronized") ?? false)} />
@@ -536,83 +595,80 @@ function App() {
             <button
               className="icon-button"
               onClick={app.reload}
-              title="Обновить данные"
-              aria-label="Обновить данные"
+              title={tr("Обновить данные")}
+              aria-label={tr("Обновить данные")}
             >
               ↻
             </button>
           </header>
           <div className="content">
             <div className="heading">
-              <div>
-                <h1>
+              <h1>
+                {
                   {
-                    {
-                      profile: "Профиль игрока",
-                      teams: "Сохранённые отряды",
-                      inventory: "Инвентарь",
-                      characters: "Персонажи",
-                      achievements: "Достижения",
-                      wishes: "Молитвы",
-                      planner: "Планировщик",
-                      history: "История изменений",
-                      captures: "Захваты и снимки",
-                      backups: "Резервные копии",
-                      maintenance: "Хранение данных",
-                      catalog: "Справочник",
-                    }[tab]
-                  }
-                </h1>
-                <p>
-                  {tab === "inventory"
-                    ? "Собранные ресурсы и экипировка вашего аккаунта."
-                    : tab === "characters"
-                      ? "Характеристики, таланты и экипировка персонажей."
-                      : tab === "history"
-                        ? "Изменения, сохранённые приложением."
-                        : "Сохранённый прогресс и данные захватов."}
-                </p>
-              </div>
-              <div className="revision">
-                Ревизия <b>{data?.revision ?? app.state?.revision ?? "—"}</b>
-                <small>
-                  {app.loading
-                    ? "Обновление…"
-                    : profile
-                      ? `UID ${profile.uid}`
-                      : "Подключение…"}
-                </small>
-              </div>
+                    profile: tr("Профиль игрока"),
+                    teams: tr("Сохранённые отряды"),
+                    inventory: tr("Инвентарь"),
+                    characters: tr("Персонажи"),
+                    achievements: tr("Достижения"),
+                    wishes: tr("Молитвы"),
+                    planner: tr("Планировщик"),
+                    dungeons: tr("Подземелья"),
+                    guides: tr("Гайды"),
+                    map: tr("Интерактивная карта"),
+                    history: tr("История изменений"),
+                    captures: tr("Захваты и снимки"),
+                    backups: tr("Резервные копии"),
+                    maintenance: tr("Хранение данных"),
+                    catalog: tr("Справочник"),
+                    abyss: tr("Витая Бездна"),
+                    theater: tr("Театр Воображариум"),
+                    onslaught: tr("Натиск"),
+                  }[tab]
+                }
+              </h1>
+              {tab === "inventory" && <p>{tr("Собранные ресурсы и экипировка вашего аккаунта.")}</p>}
+              {tab === "characters" && <p>{tr("Характеристики, таланты и экипировка персонажей.")}</p>}
             </div>
             {(app.error || app.dataError) && (
-              <div className="banner error" role="alert">
-                Не удалось обновить данные. {app.dataError || app.error}{" "}
-                <button onClick={app.reload}>Повторить</button>
+              <div className="banner error" role="alert">{tr("Не удалось обновить данные. ")}{app.dataError || app.error}{" "}
+                <button onClick={app.reload}>{tr("Повторить")}</button>
               </div>
             )}
             {!app.connected && data && (
-              <div className="banner">
-                Связь с приложением восстанавливается. Показаны последние
-                загруженные данные; их актуальность пока не подтверждена.
-              </div>
+              <div className="banner">{tr("Связь с приложением восстанавливается. Показаны последние загруженные данные; их актуальность пока не подтверждена.")}</div>
             )}
             {catalogError && (
-              <div className="banner">
-                Справочник названий недоступен. Предметы показаны по ID.
-              </div>
+              <div className="banner">{tr("Справочник названий недоступен. Предметы показаны по ID.")}</div>
             )}
-            {!app.state ? (
-              <div className="empty">Подключаемся к локальному приложению…</div>
+            {tab === "abyss" ? (
+              <AbyssView profileRegion={profile?.server_region}
+                progress={data?.collections.abyss?.[0]?.values as React.ComponentProps<typeof AbyssView>["progress"]} />
+            ) : tab === "theater" ? (
+              <TheaterView profileRegion={profile?.server_region} catalog={catalog}
+                progress={data?.collections.theater?.[0]?.values as React.ComponentProps<typeof TheaterView>["progress"]} />
+            ) : tab === "onslaught" ? (
+              <OnslaughtView profileRegion={profile?.server_region} catalog={catalog}
+                progress={data?.collections.onslaught?.[0]?.values as React.ComponentProps<typeof OnslaughtView>["progress"]}
+                exalted={data?.collections.onslaught_exalted?.[0]?.values as React.ComponentProps<typeof OnslaughtView>["exalted"]}
+                exaltedObservedMs={data?.domains.find(domain => domain.collection === "onslaught_exalted")?.observed_unix_ms} />
+            ) : tab === "dungeons" ? (
+              <DungeonsView key={profile?.profile_id} profile={profile} data={data} catalog={catalog}
+                openPlanner={() => { setTab("planner"); window.scrollTo(0, 0); }} />
+            ) : tab === "guides" ? (
+              <GuidesView catalog={catalog} selectedId={linkedTab?.split("/")[1]} catalogError={catalogError} />
+            ) : tab === "map" ? (
+              <WorldMapView key={profile?.profile_id} profile={profile} data={data} catalog={catalog}
+                openPlanner={() => { setTab("planner"); window.scrollTo(0, 0); }} />
+            ) : !app.state ? (
+              <div className="empty">{tr("Подключаемся к локальному приложению…")}</div>
             ) : tab === "catalog" ? null : !profile ? (
               <div className="empty">
-                <h2>Профилей пока нет</h2>
-                <p>
-                  Запустите захват и войдите в игру, чтобы сохранить первый
-                  снимок.
-                </p>
+                <h2>{tr("Профилей пока нет")}</h2>
+                <p>{tr("Запустите захват и войдите в игру, чтобы сохранить первый снимок.")}</p>
               </div>
             ) : !data ? (
-              <div className="empty">Загружаем профиль…</div>
+              <div className="empty">{tr("Загружаем профиль…")}</div>
             ) : (
               <>
                 {(tab === "inventory" || tab === "characters") && (
@@ -622,7 +678,7 @@ function App() {
                         <div
                           className="categories"
                           role="group"
-                          aria-label="Категории инвентаря"
+                          aria-label={tr("Категории инвентаря")}
                         >
                           {[
                             ...inventoryCategories,
@@ -636,7 +692,7 @@ function App() {
                               onClick={() => setCategory(c)}
                               aria-pressed={category === c}
                             >
-                              {label}
+                              {tr(label)}
                               <span>{inventory[c]?.length ?? 0}</span>
                             </button>
                           ))}
@@ -646,18 +702,18 @@ function App() {
                         <label className="search">
                           <span>⌕</span>
                           <input
-                            aria-label="Поиск"
+                            aria-label={tr("Поиск")}
                             placeholder={
                               tab === "characters"
-                                ? "Имя персонажа или ID…"
-                                : "Название, ID или GUID…"
+                                ? tr("Имя персонажа или ID…")
+                                : tr("Название, ID или GUID…")
                             }
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
                           />
                           {search && (
                             <button
-                              aria-label="Очистить поиск"
+                              aria-label={tr("Очистить поиск")}
                               onClick={() => setSearch("")}
                             >
                               ×
@@ -665,55 +721,55 @@ function App() {
                           )}
                         </label>
                         <select
-                          aria-label="Сортировка"
+                          aria-label={tr("Сортировка")}
                           value={tab === "characters" && sort === "count" ? "name" : sort}
                           onChange={(e) => setSort(e.target.value)}
                         >
-                          <option value="name">По названию</option>
+                          <option value="name">{tr("По названию")}</option>
                           <option value="game">
                             {tab === "inventory"
-                              ? "Порядок по справочнику игры"
-                              : "По имени персонажа"}
+                              ? tr("Порядок по справочнику игры")
+                              : tr("По имени персонажа")}
                           </option>
-                          {tab === "inventory" && <option value="count">По количеству</option>}
-                          <option value="level">По уровню</option>
+                          {tab === "inventory" && <option value="count">{tr("По количеству")}</option>}
+                          <option value="level">{tr("По уровню")}</option>
                         </select>
                         {tab === "inventory" && (
                           <>
                             <select
-                              aria-label="Тип предмета"
+                              aria-label={tr("Тип предмета")}
                               value={subtype}
                               onChange={(e) =>
                                 setInventoryFilter("subtype", e.target.value)
                               }
                             >
-                              <option value="">Все типы</option>
+                              <option value="">{tr("Все типы")}</option>
                               {subtype &&
                                 !subtypeOptions(
                                   rawRows,
                                   catalog.items ?? {},
                                 ).some(([type]) => type === subtype) && (
-                                  <option value={subtype}>{subtype} · 0</option>
+                                  <option value={subtype}>{gameText(tr(subtype))} · 0</option>
                                 )}
                               {subtypeOptions(rawRows, catalog.items ?? {}).map(
                                 ([type, count]) => (
                                   <option key={type} value={type}>
-                                    {type} · {count}
+                                    {gameText(tr(type))} · {count}
                                   </option>
                                 ),
                               )}
                             </select>
                             <select
-                              aria-label="Редкость"
+                              aria-label={tr("Редкость")}
                               value={rarityFilter}
                               onChange={(e) =>
                                 setInventoryFilter("rarity", e.target.value)
                               }
                             >
-                              <option value="">Любая редкость</option>
+                              <option value="">{tr("Любая редкость")}</option>
                               {[5, 4, 3, 2, 1, 0].map((r) => (
                                 <option key={r} value={String(r)}>
-                                  {r ? `${r} ★` : "Без редкости"}
+                                  {r ? `${r} ★` : tr("Без редкости")}
                                 </option>
                               ))}
                             </select>
@@ -726,14 +782,12 @@ function App() {
                                     [category]: {},
                                   }))
                                 }
-                              >
-                                Сбросить фильтры
-                              </button>
+                              >{tr("Сбросить фильтры")}</button>
                             )}
                             <div
                               className="view-toggle"
                               role="group"
-                              aria-label="Вид инвентаря"
+                              aria-label={tr("Вид инвентаря")}
                             >
                               <button
                                 aria-pressed={inventoryView === "grid"}
@@ -741,18 +795,14 @@ function App() {
                                   inventoryView === "grid" ? "selected" : ""
                                 }
                                 onClick={() => setInventoryView("grid")}
-                              >
-                                ▦ Сетка
-                              </button>
+                              >{tr("▦ Сетка")}</button>
                               <button
                                 aria-pressed={inventoryView === "list"}
                                 className={
                                   inventoryView === "list" ? "selected" : ""
                                 }
                                 onClick={() => setInventoryView("list")}
-                              >
-                                ☷ Список
-                              </button>
+                              >{tr("☷ Список")}</button>
                             </div>
                           </>
                         )}
@@ -769,14 +819,12 @@ function App() {
                                 )
                                   setCategory("development");
                               }}
-                            />
-                            Режим разработчика
-                          </label>
+                            />{tr("Режим разработчика")}</label>
                         )}
-                        <span className="muted">{tab === "characters" ? `Получено: ${gallery.filter((r:any)=>!r.unowned).length}` : `Найдено: ${rows.length}`}</span>
+                        <span className="muted">{tab === "characters" ? tr("Получено: {0}", gallery.filter((r:any)=>!r.unowned).length) : tr("Найдено: {0}", rows.length)}</span>
                       </div>
-                      {tab === "characters" && <div className="character-element-filters" role="group" aria-label="Фильтр по стихиям">
-                        <button aria-pressed={!selectedElements.length} onClick={()=>setSelectedElements([])}>Все стихии</button>
+                      {tab === "characters" && <div className="character-element-filters" role="group" aria-label={tr("Фильтр по стихиям")}>
+                        <button aria-pressed={!selectedElements.length} onClick={()=>setSelectedElements([])}>{tr("Все стихии")}</button>
                         {Object.entries(elements).map(([key,[label]])=><button key={key} aria-pressed={selectedElements.includes(key)} onClick={()=>setSelectedElements(all=>all.includes(key)?all.filter(e=>e!==key):[...all,key])}>{label}</button>)}
                       </div>}
                       <div className="domain-line">
@@ -793,21 +841,18 @@ function App() {
                         {domain
                           ? (freshnessNames[domain.freshness] ??
                             domain.freshness)
-                          : "Нет снимка для этого раздела"}
+                          : tr("Нет снимка для этого раздела")}
                         <span className="muted">
                           {domain
-                            ? `Обновлено ${date(domain.observed_unix_ms)}`
+                            ? tr("Обновлено {0}", date(domain.observed_unix_ms))
                             : ""}
                         </span>
                         {domain?.freshness === "stale" && (
-                          <b>Нужен свежий снимок</b>
+                          <b>{tr("Нужен свежий снимок")}</b>
                         )}
                       </div>
                       {domain?.scope !== "full" && (
-                        <div className="coverage">
-                          Показаны наблюдавшиеся записи. Отсутствие предмета в
-                          неполном снимке не подтверждает нулевое количество.
-                        </div>
+                        <div className="coverage">{tr("Показаны наблюдавшиеся записи. Отсутствие предмета в неполном снимке не подтверждает нулевое количество.")}</div>
                       )}
                       <div ref={virtual.ref} className="virtual-items">
                       <div style={{height:virtual.top}} aria-hidden="true" />
@@ -815,13 +860,13 @@ function App() {
                         <div className="empty">
                           <h2>
                             {search || subtype || rarityFilter
-                              ? "Ничего не найдено"
-                              : "В этом разделе пока пусто"}
+                              ? tr("Ничего не найдено")
+                              : tr("В этом разделе пока пусто")}
                           </h2>
                           <p>
                             {search || subtype || rarityFilter
-                              ? "Измените поиск или сбросьте фильтры."
-                              : "Данные появятся после подходящего снимка."}
+                              ? tr("Измените поиск или сбросьте фильтры.")
+                              : tr("Данные появятся после подходящего снимка.")}
                           </p>
                         </div>
                       ) : tab === "characters" ? (
@@ -841,20 +886,20 @@ function App() {
                           <table>
                             <thead>
                               <tr>
-                                <th>Предмет</th>
+                                <th>{tr("Предмет")}</th>
                                 <th>
                                   {!["weapons", "artifacts"].includes(category)
-                                    ? "Количество"
+                                    ? tr("Количество")
                                     : category === "weapons"
-                                      ? "Уровень / количество"
-                                      : "Уровень"}
+                                      ? tr("Уровень / количество")
+                                      : tr("Уровень")}
                                 </th>
                                 <th>
                                   {category === "weapons"
-                                    ? "Пробуждение / редкость"
-                                    : "Редкость"}
+                                    ? tr("Пробуждение / редкость")
+                                    : tr("Редкость")}
                                 </th>
-                                <th>Статус</th>
+                                <th>{tr("Статус")}</th>
                                 <th />
                               </tr>
                             </thead>
@@ -888,8 +933,8 @@ function App() {
                                   <td className="number">
                                     {category === "weapons"
                                       ? r.source_collection === "weapons"
-                                        ? `Ур. ${fmt(r.values.level)}`
-                                        : `${fmt(r.values.count)} шт.`
+                                        ? tr("Ур. {0}", fmt(r.values.level))
+                                        : tr("{0} шт.", fmt(r.values.count))
                                       : fmt(
                                           category === "artifacts"
                                             ? r.values.level
@@ -908,8 +953,8 @@ function App() {
                                   <td>
                                     <span className="subtle">
                                       {r.confirmation === "observed"
-                                        ? "Подтверждён"
-                                        : "Из прошлых данных"}
+                                        ? tr("Подтверждён")
+                                        : tr("Из прошлых данных")}
                                       {r.values.locked ? " · 🔒" : ""}
                                     </span>
                                   </td>
@@ -917,9 +962,7 @@ function App() {
                                     <button
                                       className="text-button"
                                       onClick={() => setDetail(r)}
-                                    >
-                                      Подробнее ↗
-                                    </button>
+                                    >{tr("Подробнее ↗")}</button>
                                   </td>
                                 </tr>
                               ))}
@@ -932,31 +975,24 @@ function App() {
 
                     </section>
                     {tab === "inventory" && (
-                      <p className="footnote">
-                        Игровые изображения © HoYoverse. Источники:{" "}
+                      <p className="footnote">{tr("Игровые изображения © HoYoverse. Источники:")}{" "}
                         <a
                           href="https://enka.network/"
                           target="_blank"
                           rel="noreferrer"
                         >
                           Enka.Network
-                        </a>{" "}
-                        и{" "}
+                        </a>{" "}{tr("и")}{" "}
                         <a
                           href="https://github.com/PathOfGenshin/resources"
                           target="_blank"
                           rel="noreferrer"
                         >
                           PathOfGenshin
-                        </a>
-                        . Загруженные иконки сохраняются на этом компьютере.
-                      </p>
+                        </a>{tr(". Загруженные иконки сохраняются на этом компьютере.")}</p>
                     )}
                     {tab === "characters" && (
-                      <p className="footnote">
-                        Итоговые характеристики отражают последние полученные от
-                        сервера значения.
-                      </p>
+                      <p className="footnote">{tr("Итоговые характеристики отражают последние полученные от сервера значения.")}</p>
                     )}
                   </>
                 )}
@@ -975,6 +1011,11 @@ function App() {
                     profile={profile}
                     catalog={catalog}
                     openCharacter={(guid)=>{const row=roster.find(r=>r.entity_key===guid);if(row)setDetail(row);}}
+                    navigate={section=>{
+                      setTab(section);
+                      setSearch("");
+                      window.scrollTo(0, 0);
+                    }}
                     avatarName={(id) => name({ avatar_id: id })}
                   />
                 )}
@@ -992,7 +1033,17 @@ function App() {
                 {tab === "wishes" && <Wishes key={app.selected} profile={app.selected} tick={app.tick} catalog={catalog} />}
                 {tab === "planner" && <Planner key={app.selected} profile={app.selected} tick={app.tick} data={data} catalog={catalog}
                   requestedGoal={goalRequest && goalRequest.profile===app.selected ? goalRequest.choice : undefined}
-                  onRequestHandled={()=>setGoalRequest(null)} />}
+                  onRequestHandled={()=>setGoalRequest(null)}
+                  openEntity={setDetail}
+                  openMaterial={id=>{
+                    const key=String(id);
+                    const walletRow=data.collections.wallet?.find(row=>row.entity_key===key);
+                    const materialRow=aggregate(data.collections.material_stacks??[]).find((row:Row)=>row.entity_key===key);
+                    setDetail(walletRow ?? materialRow ?? {
+                      entity_key:key, guids:[], confirmation:"historical_unconfirmed", value_format:"catalog", revision:data.revision,
+                      values:{item_id:id,count:observedStock(data,id,id===202)},
+                    });
+                  }} />}
                 {tab === "achievements" && (
                   <Achievements data={data} catalog={catalog} />
                 )}
@@ -1009,11 +1060,8 @@ function App() {
                   <>
                 <section className="capture-help">
                   <div>
-                    <b>Захват игровой сессии</b>
-                    <p>
-                      Запускайте до входа в игру из PowerShell администратора.
-                      Остановка — Ctrl+C или выход из игры.
-                    </p>
+                    <b>{tr("Захват игровой сессии")}</b>
+                    <p>{tr("Запускайте до входа в игру из PowerShell администратора. Остановка — Ctrl+C или выход из игры.")}</p>
                   </div>
                   <button
                     onClick={() =>
@@ -1024,14 +1072,10 @@ function App() {
                         .then(() => setCopied(true))
                         .catch(() => setCopyError(true))
                     }
-                  >
-                    Скопировать команду
-                  </button>
+                  >{tr("Скопировать команду")}</button>
                 </section>
                 {copied && (
-                  <p className="footnote" role="status">
-                    Команда скопирована. Выполните её из папки Vision Overlay.
-                  </p>
+                  <p className="footnote" role="status">{tr("Команда скопирована. Выполните её из папки Vision Overlay.")}</p>
                 )}
                 {copyError && (
                   <pre>
@@ -1052,10 +1096,7 @@ function App() {
             )}
             {tab === "captures" && <CaptureAutomation />}
             <footer>
-              VISION OVERLAY{" "}
-              <span>
-                Локальное приложение · Данные хранятся на этом компьютере
-              </span>
+              <span>{tr("Локальное приложение · Данные хранятся на этом компьютере")}</span>
             </footer>
           </div>
         </main>
@@ -1192,12 +1233,12 @@ function Details({
           className="close"
           onClick={close}
           autoFocus
-          aria-label="Закрыть карточку"
+          aria-label={tr("Закрыть карточку")}
         >
           ×
         </button>
-        {back&&<button className="detail-back" onClick={back}>‹ К персонажу</button>}
-        <div className="eyebrow">{isCharacter ? "ПЕРСОНАЖ" : "ПРЕДМЕТ"}</div>
+        {back&&<button className="detail-back" onClick={back}>{tr("‹ К персонажу")}</button>}
+        <div className="eyebrow">{isCharacter ? tr("ПЕРСОНАЖ") : tr("ПРЕДМЕТ")}</div>
         <h2>{name(v)}</h2>
         <div className="detail-icon">
           <ItemIcon
@@ -1211,26 +1252,22 @@ function Details({
             large
           />
         </div>
-        <p className="muted">{isCharacter ? referenceOnly ? "Не получен" : `Дружба ${v.friendship?.level ?? "—"}` : `ID ${v.item_id}`}</p>
-        {owner && <div className="detail-equipment-owner"><ItemIcon icon={catalog.avatarIcons?.[owner.values.avatar_id]} fallback={name(owner.values).slice(0,1)} /><div><small>Экипировано</small><strong>{name(owner.values)}</strong></div></div>}
+        <p className="muted">{isCharacter ? referenceOnly ? tr("Не получен") : tr("Дружба {0}", v.friendship?.level ?? "—") : `ID ${v.item_id}`}</p>
+        {owner && <div className="detail-equipment-owner"><ItemIcon icon={catalog.avatarIcons?.[owner.values.avatar_id]} fallback={name(owner.values).slice(0,1)} /><div><small>{tr("Экипировано")}</small><strong>{name(owner.values)}</strong></div></div>}
         {isCharacter &&
           catalog.avatarMetadata?.[String(v.avatar_id)]?.weaponType ===
             "WEAPON_CROSSBOW" && (
-            <p className="footnote">
-              Отдельная запись персонажа игрового режима с винтовками. Она
-              сохраняется в профиле отдельно от обычного Путешественника.
-            </p>
+            <p className="footnote">{tr("Отдельная запись персонажа игрового режима с винтовками. Она сохраняется в профиле отдельно от обычного Путешественника.")}</p>
           )}
         {!referenceOnly && <div className="detail-summary">
           {isCharacter
-            ? `Уровень ${characterLevel(v)}`
-            : v.kind === "weapon" ? `Уровень ${v.level ?? "—"} · Возвышение ${v.ascension ?? "—"}`
-            : `Количество ${fmt(v.count)}${v.level !== undefined ? " · Уровень " + v.level : ""}${v.refinement !== undefined ? " · R" + v.refinement : ""}`}
+            ? tr("Уровень {0}", characterLevel(v))
+            : v.kind === "weapon" ? tr("Уровень {0} · Возвышение {1}", v.level ?? "—", v.ascension ?? "—")
+            : tr("Количество {0}{1}{2}", fmt(v.count), v.level !== undefined ? tr(" · Уровень ") + v.level : "", v.refinement !== undefined ? " · R" + v.refinement : "")}
         </div>}
-        {canPlan && <button className="detail-plan-button" type="button" onClick={()=>addGoal({...live,collection:isCharacter?"characters":"weapons"})}>В планировщик</button>}
+        {canPlan && <button className="detail-plan-button" type="button" onClick={()=>addGoal({...live,collection:isCharacter?"characters":"weapons"})}>{tr("В планировщик")}</button>}
         {isTraveler(v) && (
-          <p className="muted">
-            Активная стихия: {elementName(v.skill_depot_id, catalog)}
+          <p className="muted">{tr("Активная стихия: ")}{elementName(v.skill_depot_id, catalog)}
           </p>
         )}
         {isCharacter ? <>
@@ -1243,13 +1280,13 @@ function Details({
         </> : <NextUpgrades values={v} catalog={catalog} data={data}/>}
         {v.kind === "artifact" && (
           <>
-            <h3>Основная характеристика</h3>
+            <h3>{tr("Основная характеристика")}</h3>
             <p>
               {artifactInfo.main
-                ? `${statName(artifactInfo.main.type)} · ${artifactInfo.main.value !== null ? statValue(artifactInfo.main.type, artifactInfo.main.value) : "значение не определено"}`
-                : `Не определена (ID ${v.main_prop_id})`}
+                ? `${statName(artifactInfo.main.type)} · ${artifactInfo.main.value !== null ? statValue(artifactInfo.main.type, artifactInfo.main.value) : tr("значение не определено")}`
+                : tr("Не определена (ID {0})", v.main_prop_id)}
             </p>
-            <h3>Дополнительные характеристики</h3>
+            <h3>{tr("Дополнительные характеристики")}</h3>
             <dl>
               {artifactInfo.substats.map(({type, value}:any) => (
                 <React.Fragment key={type}>
@@ -1263,7 +1300,7 @@ function Details({
         {v.kind === "artifact"&&<ArtifactSetDetails values={v} catalog={catalog}/>}
         {!referenceOnly && <ProgressionReference values={v} catalog={catalog} />}
         {!referenceOnly && <details>
-          <summary>Диагностические данные</summary>
+          <summary>{tr("Диагностические данные")}</summary>
           <p>
             GUID {live.entity_key} · {live.value_format}
           </p>
@@ -1329,19 +1366,19 @@ function History({
     return (
       (
         {
-          currency_changed: "Изменение валюты",
-          character_progress_changed: "Повышение уровня персонажа",
-          talent_changed: "Улучшение таланта",
-          equipment_changed: "Смена экипировки",
-          item_changed: "Изменение экипировки",
-          friendship_changed: "Изменение дружбы",
-          achievement_changed: "Изменение достижения",
-          constellation_changed: "Активация созвездия",
-          traveler_element_changed: "Обновление стихии Путешественника",
-          "state.invalidated": "Разрыв данных",
-          "capture.closed": "Захват завершён",
-          "identity.confirmed": "Профиль подтверждён",
-          "state.snapshot": "Получен снимок",
+          currency_changed: tr("Изменение валюты"),
+          character_progress_changed: tr("Повышение уровня персонажа"),
+          talent_changed: tr("Улучшение таланта"),
+          equipment_changed: tr("Смена экипировки"),
+          item_changed: tr("Изменение экипировки"),
+          friendship_changed: tr("Изменение дружбы"),
+          achievement_changed: tr("Изменение достижения"),
+          constellation_changed: tr("Активация созвездия"),
+          traveler_element_changed: tr("Обновление стихии Путешественника"),
+          "state.invalidated": tr("Разрыв данных"),
+          "capture.closed": tr("Захват завершён"),
+          "identity.confirmed": tr("Профиль подтверждён"),
+          "state.snapshot": tr("Получен снимок"),
         } as Record<string, string>
       )[e.kind] ?? e.kind
     );
@@ -1358,13 +1395,13 @@ function History({
     <section className="panel">
       <div className="toolbar">
         <input
-          aria-label="Поиск по истории"
-          placeholder="Поиск по событиям…"
+          aria-label={tr("Поиск по истории")}
+          placeholder={tr("Поиск по событиям…")}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
         <span className="muted">
-          {busy ? "Обновление…" : `${visible.length} событий`}
+          {busy ? tr("Обновление…") : tr("{0} событий", visible.length)}
         </span>
       </div>
       {error && (
@@ -1372,15 +1409,12 @@ function History({
           {error}
         </div>
       )}
-      <div className="coverage">
-        Показаны события, сохранённые приложением. Время указано по часовому
-        поясу компьютера.
-        {cursor
-          ? " Показаны последние события; более ранние записи можно загрузить ниже."
+      <div className="coverage">{tr("Показаны события, сохранённые приложением. Время указано по часовому поясу компьютера.")}{cursor
+          ? tr(" Показаны последние события; более ранние записи можно загрузить ниже.")
           : ""}
       </div>
       {visible.length === 0 ? (
-        <div className="empty">Подходящих событий пока нет</div>
+        <div className="empty">{tr("Подходящих событий пока нет")}</div>
       ) : (
         <div className="timeline">
           {visible.map((e) => (
@@ -1388,7 +1422,7 @@ function History({
               <summary>
                 <time>{date(e.observed_unix_ms)}</time>
                 <span>
-                  {e.projection_result === "rejected" ? "⚠ Отклонено · " : ""}
+                  {e.projection_result === "rejected" ? tr("⚠ Отклонено · ") : ""}
                   {text(e)}
                 </span>
                 <small>#{e.revision}</small>
@@ -1427,9 +1461,7 @@ function History({
               if (g === generation.current) setBusy(false);
             }
           }}
-        >
-          Загрузить следующие записи
-        </button>
+        >{tr("Загрузить следующие записи")}</button>
       )}
     </section>
   );
@@ -1467,49 +1499,46 @@ function Achievements({
   useEffect(() => setLimit(80), [search, status, category]);
   const stageStatus = (row?: Row) =>
     !row
-      ? "Нет данных"
+      ? tr("Нет данных")
       : row.values.status_code === 3
-        ? "Награда получена"
+        ? tr("Награда получена")
         : row.values.status_code === 2
-          ? "Награда доступна"
+          ? tr("Награда доступна")
           : `${row.values.current_progress ?? "?"} / ${row.values.total_progress ?? "?"}`;
   return (
     <section className="panel achievements-panel">
       <div className="toolbar">
         <input
-          aria-label="Поиск достижений"
-          placeholder="Название, описание или ID…"
+          aria-label={tr("Поиск достижений")}
+          placeholder={tr("Название, описание или ID…")}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
         <select
-          aria-label="Статус достижения"
+          aria-label={tr("Статус достижения")}
           value={status}
           onChange={(e) => setStatus(e.target.value)}
         >
-          <option value="all">Все статусы</option>
-          <option value="unearned">Не получены</option>
-          <option value="claimed">Награда получена</option>
-          <option value="finished">Выполнены, награда не получена</option>
+          <option value="all">{tr("Все статусы")}</option>
+          <option value="unearned">{tr("Не получены")}</option>
+          <option value="claimed">{tr("Награда получена")}</option>
+          <option value="finished">{tr("Выполнены, награда не получена")}</option>
         </select>
         <select
-          aria-label="Категория достижений"
+          aria-label={tr("Категория достижений")}
           value={category}
           onChange={(e) => setCategory(e.target.value)}
         >
-          <option value="all">Все категории</option>
+          <option value="all">{tr("Все категории")}</option>
           {categories.map(([id, meta]) => (
             <option key={id} value={id}>
-              {meta.category ?? "Без категории"}
+              {meta.category ?? tr("Без категории")}
             </option>
           ))}
         </select>
       </div>
-      <div className="domain-line">
-        Найдено: {rows.length} · Награда получена: {claimed}{" "}
-        <span className="subtle">
-          Счётчик наград учитывает каждый этап отдельно
-        </span>
+      <div className="domain-line">{tr("Найдено: ")}{rows.length}{tr(" · Награда получена: ")}{claimed}{" "}
+        <span className="subtle">{tr("Счётчик наград учитывает каждый этап отдельно")}</span>
       </div>
       <div className="achievement-list">
         {rows.slice(0, limit).map((group, index) => (
@@ -1517,24 +1546,24 @@ function Achievements({
             {(index === 0 ||
               rows[index - 1].meta.goal_id !== group.meta.goal_id) && (
               <h2 className="achievement-category">
-                {group.meta.category ?? "Без категории"}
+                {group.meta.category ?? tr("Без категории")}
               </h2>
             )}
             <article className="achievement-card">
               <span className="achievement-symbol">✧</span>
               <div className="achievement-body">
                 <div className="achievement-title">
-                  <h3>{group.meta.name ?? `Достижение ${group.key}`}</h3>
+                  <h3>{group.meta.name ?? tr("Достижение {0}", group.key)}</h3>
                   {group.levels.length > 1 && (
                     <div
                       className="achievement-stars"
-                      aria-label="Этапы достижения"
+                      aria-label={tr("Этапы достижения")}
                     >
                       {group.levels.map((level: any) => (
                         <span
                           key={level.id}
-                          title={`Этап ${level.meta.stage ?? 1}: ${stageStatus(level.row)}`}
-                          aria-label={`Этап ${level.meta.stage ?? 1}: ${stageStatus(level.row)}`}
+                          title={tr("Этап {0}: {1}", level.meta.stage ?? 1, stageStatus(level.row))}
+                          aria-label={tr("Этап {0}: {1}", level.meta.stage ?? 1, stageStatus(level.row))}
                           className={
                             level.row?.values.status_code >= 2 ? "earned" : ""
                           }
@@ -1550,11 +1579,10 @@ function Achievements({
                     <div key={level.id} className="achievement-stage">
                       <div>
                         {group.levels.length > 1 && (
-                          <small className="stage-number">
-                            Этап {level.meta.stage ?? 1}
+                          <small className="stage-number">{tr("Этап ")}{level.meta.stage ?? 1}
                           </small>
                         )}
-                        <p>{level.meta.description ?? "Описание недоступно"}</p>
+                        <p>{level.meta.description ?? tr("Описание недоступно")}</p>
                         <small>ID {level.id}</small>
                       </div>
                       <span className="subtle">{stageStatus(level.row)}</span>
@@ -1567,12 +1595,10 @@ function Achievements({
         ))}
       </div>
       {!rows.length && (
-        <div className="empty">Достижений по этим условиям нет</div>
+        <div className="empty">{tr("Достижений по этим условиям нет")}</div>
       )}
       {rows.length > limit && (
-        <button className="load-more" onClick={() => setLimit((n) => n + 80)}>
-          Показать ещё
-        </button>
+        <button className="load-more" onClick={() => setLimit((n) => n + 80)}>{tr("Показать ещё")}</button>
       )}
     </section>
   );
@@ -1636,16 +1662,15 @@ function Captures({
     <section className="panel">
       <div className="toolbar">
         <select
-          aria-label="Захват"
+          aria-label={tr("Захват")}
           value={capture}
           onChange={(e) => setCapture(e.target.value)}
         >
-          <option value="">Выберите захват…</option>
+          <option value="">{tr("Выберите захват…")}</option>
           {captures.map((c) => (
             <option value={c.capture_id} key={c.capture_id}>
-              {new Date(c.imported_at).toLocaleString("ru-RU")} ·{" "}
-              {c.terminal_status} · {c.event_count} событий
-            </option>
+              {new Date(c.imported_at).toLocaleString(uiLocale)} ·{" "}
+              {c.terminal_status} · {c.event_count}{tr(" событий")}</option>
           ))}
         </select>
       </div>
@@ -1656,15 +1681,13 @@ function Captures({
       )}
       {selected && (
         <div className="domain-line">
-          {selected.terminal_status} · {selected.event_count} событий ·{" "}
+          {selected.terminal_status} · {selected.event_count}{tr(" событий ·")}{" "}
           {selected.capture_id}
         </div>
       )}
       <DiagnosticExport capture={capture}/>
       {capture && snapshots.length === 0 && (
-        <div className="empty">
-          Снимков выбранного профиля в этом захвате нет
-        </div>
+        <div className="empty">{tr("Снимков выбранного профиля в этом захвате нет")}</div>
       )}
       <div className="snapshot-list">
         {snapshots.map((s) => (
@@ -1682,9 +1705,8 @@ function Captures({
             }}
           >
             {labels[s.collection] ?? s.collection}
-            <small>
-              Событие {s.source_sequence} ·{" "}
-              {s.scope === "full" ? "Полный снимок" : "Частичное покрытие"}
+            <small>{tr("Событие ")}{s.source_sequence} ·{" "}
+              {s.scope === "full" ? tr("Полный снимок") : tr("Частичное покрытие")}
             </small>
           </button>
         ))}
@@ -1692,37 +1714,31 @@ function Captures({
       {snapshot && (
         <div className="comparison">
           <h3>
-            {labels[snapshot.collection] ?? snapshot.collection}: сравнение с
-            текущим состоянием
-          </h3>
+            {labels[snapshot.collection] ?? snapshot.collection}{tr(": сравнение с текущим состоянием")}</h3>
           <p>
-            {Object.keys(snapshot.entities).length} записей в снимке ·{" "}
-            {diff.length} различий
-          </p>
-          <div className="coverage">
-            Отсутствие записи в частичном снимке означает «не наблюдалась».
-            Сравнение не меняет выбранный профиль или его данные.
-          </div>
+            {Object.keys(snapshot.entities).length}{tr(" записей в снимке ·")}{" "}
+            {diff.length}{tr(" различий")}</p>
+          <div className="coverage">{tr("Отсутствие записи в частичном снимке означает «не наблюдалась». Сравнение не меняет выбранный профиль или его данные.")}</div>
           {diff.slice(0, 100).map((d: any) => (
             <div className="difference" key={d.key}>
               <span>
                 {name(d.after ?? d.before)}
-                <small>GUID / ключ {d.key}</small>
+                <small>{tr("GUID / ключ ")}{d.key}</small>
               </span>
               <b>
                 {d.before?.count !== undefined || d.after?.count !== undefined
-                  ? `${d.before?.count ?? "не наблюдался"} → ${d.after?.count ?? "не наблюдался"}`
+                  ? `${d.before?.count ?? tr("не наблюдался")} → ${d.after?.count ?? tr("не наблюдался")}`
                   : d.kind === "added"
-                    ? "Новая запись"
+                    ? tr("Новая запись")
                     : d.kind === "removed"
-                      ? "Нет в текущей базе"
-                      : "Изменены характеристики"}
+                      ? tr("Нет в текущей базе")
+                      : tr("Изменены характеристики")}
               </b>
             </div>
           ))}
-          {diff.length > 100 && <p>Показаны первые 100 различий.</p>}
+          {diff.length > 100 && <p>{tr("Показаны первые 100 различий.")}</p>}
           <details>
-            <summary>Полные данные исходного снимка</summary>
+            <summary>{tr("Полные данные исходного снимка")}</summary>
             <pre>{JSON.stringify(snapshot.entities, null, 2)}</pre>
           </details>
         </div>
@@ -1744,17 +1760,17 @@ function CaptureAutomation() {
   const pendingRef = useRef(pending);
   pendingRef.current = pending;
   const errors: Record<string, string> = {
-    helper_unavailable: "Наблюдатель не отвечает. Проверьте его запуск.",
-    helper_upgrade_required: "Наблюдатель нужно обновить и перезапустить.",
-    already_running: "Захват уже запущен.",
-    run_changed: "Захват уже завершился или сменился. Обновите статус.",
-    command_pending: "Предыдущая команда ещё обрабатывается.",
-    helper_restarted: "Наблюдатель перезапустился. Повторите команду.",
-    expired_command: "Команда не была обработана вовремя.",
-    launch_failed: "Не удалось запустить захват. Проверьте журнал наблюдателя.",
-    capture_failed: "Захват завершился с ошибкой. Проверьте журнал.",
-    invalid_command: "Команда отклонена наблюдателем.",
-    observation_failed: "Не удалось проверить процессы игры.",
+    helper_unavailable: tr("Наблюдатель не отвечает. Проверьте его запуск."),
+    helper_upgrade_required: tr("Наблюдатель нужно обновить и перезапустить."),
+    already_running: tr("Захват уже запущен."),
+    run_changed: tr("Захват уже завершился или сменился. Обновите статус."),
+    command_pending: tr("Предыдущая команда ещё обрабатывается."),
+    helper_restarted: tr("Наблюдатель перезапустился. Повторите команду."),
+    expired_command: tr("Команда не была обработана вовремя."),
+    launch_failed: tr("Не удалось запустить захват. Проверьте журнал наблюдателя."),
+    capture_failed: tr("Захват завершился с ошибкой. Проверьте журнал."),
+    invalid_command: tr("Команда отклонена наблюдателем."),
+    observation_failed: tr("Не удалось проверить процессы игры."),
   };
   useEffect(() => {
     let disposed = false,
@@ -1776,7 +1792,7 @@ function CaptureAutomation() {
           const result = value.last_command;
           if (value.watcher_instance && value.watcher_instance !== p.instance) {
             setFeedback(
-              "Наблюдатель перезапустился. Проверьте состояние захвата перед повторной командой.",
+              tr("Наблюдатель перезапустился. Проверьте состояние захвата перед повторной командой."),
             );
             setPending(null);
             pendingRef.current = null;
@@ -1789,16 +1805,16 @@ function CaptureAutomation() {
             setFeedback(
               result.outcome === "completed"
                 ? p.action === "start"
-                  ? "Источник готов. Для синхронизации дождитесь снимка после входа в игру."
-                  : "Захват завершён. Запись финализирована; бэкенд завершает доставку оставшихся событий."
+                  ? tr("Источник готов. Для синхронизации дождитесь снимка после входа в игру.")
+                  : tr("Захват завершён. Запись финализирована; бэкенд завершает доставку оставшихся событий.")
                 : (errors[result.code] ??
-                    "Команда не выполнена: " + result.code),
+                    tr("Команда не выполнена: ") + result.code),
             );
             setPending(null);
             pendingRef.current = null;
           } else if (Date.now() - p.at > 45000) {
             setFeedback(
-              "Подтверждение команды не получено. Проверьте состояние и журнал наблюдателя.",
+              tr("Подтверждение команды не получено. Проверьте состояние и журнал наблюдателя."),
             );
             setPending(null);
             pendingRef.current = null;
@@ -1846,33 +1862,33 @@ function CaptureAutomation() {
       if (!response.ok) {
         setFeedback(
           errors[result.error?.code] ??
-            "Команда не выполнена: " + (result.error?.code ?? response.status),
+            tr("Команда не выполнена: ") + (result.error?.code ?? response.status),
         );
         setPending(null);
         pendingRef.current = null;
       }
     } catch {
-      setFeedback("Ответ сервера не получен; уточняем состояние команды…");
+      setFeedback(tr("Ответ сервера не получен; уточняем состояние команды…"));
     }
   }
   const titles: Record<string, string> = {
-    not_configured: "Не настроен",
-    disabled: "Отключён",
-    idle: "Ручной режим · захват не запущен",
-    watcher_unavailable: "Наблюдатель не отвечает",
-    waiting: "Захват не запущен",
-    capturing: "Захват работает",
-    capture_started: "Запуск захвата",
-    capture_finished: "Захват завершён",
-    capture_failed: "Ошибка захвата",
-    launch_failed: "Ошибка запуска",
-    already_running: "Ожидание нового входа в игру",
-    external_capture: "Работает внешний захват",
-    handled: "Захват не запущен",
-    observation_failed: "Не удалось проверить процесс игры",
-    starting: "Запуск источника…",
-    ready: "Захват работает · источник готов",
-    stopping: "Завершение записи…",
+    not_configured: tr("Не настроен"),
+    disabled: tr("Отключён"),
+    idle: tr("Ручной режим · захват не запущен"),
+    watcher_unavailable: tr("Наблюдатель не отвечает"),
+    waiting: tr("Захват не запущен"),
+    capturing: tr("Захват работает"),
+    capture_started: tr("Запуск захвата"),
+    capture_finished: tr("Захват завершён"),
+    capture_failed: tr("Ошибка захвата"),
+    launch_failed: tr("Ошибка запуска"),
+    already_running: tr("Ожидание нового входа в игру"),
+    external_capture: tr("Работает внешний захват"),
+    handled: tr("Захват не запущен"),
+    observation_failed: tr("Не удалось проверить процесс игры"),
+    starting: tr("Запуск источника…"),
+    ready: tr("Захват работает · источник готов"),
+    stopping: tr("Завершение записи…"),
   };
   const phase = status?.capture_state ?? status?.state;
   const available =
@@ -1887,7 +1903,7 @@ function CaptureAutomation() {
     <section className="automation">
       <div className="automation-heading">
         <div>
-          <b>Управление захватом</b>
+          <b>{tr("Управление захватом")}</b>
           <p>
             <span
               className={
@@ -1895,8 +1911,8 @@ function CaptureAutomation() {
               }
             />
             {error
-              ? "Статус временно недоступен"
-              : (titles[phase] ?? "Проверка состояния…")}
+              ? tr("Статус временно недоступен")
+              : (titles[phase] ?? tr("Проверка состояния…"))}
           </p>
         </div>
         <div className="capture-buttons">
@@ -1906,7 +1922,7 @@ function CaptureAutomation() {
             }
             onClick={() => void control("start")}
           >
-            {pending?.action === "start" ? "Запускаем…" : "Начать захват"}
+            {pending?.action === "start" ? tr("Запускаем…") : tr("Начать захват")}
           </button>
           <button
             disabled={
@@ -1915,27 +1931,17 @@ function CaptureAutomation() {
             onClick={() => void control("stop")}
           >
             {pending?.action === "stop"
-              ? "Останавливаем…"
-              : "Остановить захват"}
+              ? tr("Останавливаем…")
+              : tr("Остановить захват")}
           </button>
         </div>
       </div>
-      <p>
-        Запускайте захват до входа в игру и дождитесь готовности источника. При
-        запуске посреди игры для получения снимка потребуется повторный вход в
-        игровую сессию. Ручная остановка сохраняет запись и не запускает захват
-        заново автоматически в том же процессе игры.
-      </p>
+      <p>{tr("Запускайте захват до входа в игру и дождитесь готовности источника. При запуске посреди игры для получения снимка потребуется повторный вход в игровую сессию. Ручная остановка сохраняет запись и не запускает захват заново автоматически в том же процессе игры.")}</p>
       {status?.watcher_alive && !status?.control_available && (
-        <p className="control-message">
-          Для кнопок управления нужно обновить работающий наблюдатель.
-        </p>
+        <p className="control-message">{tr("Для кнопок управления нужно обновить работающий наблюдатель.")}</p>
       )}
       {status?.external_capture && (
-        <p className="control-message">
-          Этот захват запущен вне помощника. Остановите его через Ctrl+C в
-          исходном терминале.
-        </p>
+        <p className="control-message">{tr("Этот захват запущен вне помощника. Остановите его через Ctrl+C в исходном терминале.")}</p>
       )}
       {feedback && (
         <p className="control-message" role="status">
@@ -1944,12 +1950,12 @@ function CaptureAutomation() {
       )}
       <div className="automation-heading auto-settings">
         <div>
-          <b>Автоматический запуск</b>
+          <b>{tr("Автоматический запуск")}</b>
           <p>
-            {status?.enabled ? "Включён" : "Отключён"} ·{" "}
+            {status?.enabled ? tr("Включён") : tr("Отключён")} ·{" "}
             {status?.watcher_alive
-              ? "наблюдатель работает"
-              : "наблюдатель недоступен"}
+              ? tr("наблюдатель работает")
+              : tr("наблюдатель недоступен")}
           </p>
         </div>
         <button
@@ -1961,31 +1967,27 @@ function CaptureAutomation() {
               .catch(() => setCopied(false));
           }}
         >
-          {status?.enabled ? "Команда отключения" : "Команда включения"}
+          {status?.enabled ? tr("Команда отключения") : tr("Команда включения")}
         </button>
       </div>
       <details>
-        <summary>Настройка и ограничения</summary>
+        <summary>{tr("Настройка и ограничения")}</summary>
         <p>
           {status?.portable
-            ? "Настройте захват через меню значка Vision Overlay в трее. Для ручной настройки можно выполнить команду ниже в PowerShell администратора."
-            : "Однократно выполните команду ниже в PowerShell администратора из папки Vision Overlay."}
-          {" "}Помощник работает от вашего пользователя с повышенными правами. Пароль не сохраняется.
-        </p>
+            ? tr("Настройте захват через меню значка Vision Overlay в трее. Для ручной настройки можно выполнить команду ниже в PowerShell администратора.")
+            : tr("Однократно выполните команду ниже в PowerShell администратора из папки Vision Overlay.")}
+          {" "}{tr("Помощник работает от вашего пользователя с повышенными правами. Пароль не сохраняется.")}</p>
         <pre>{command}</pre>
-        <p>
-          Помощник принимает только запуск и штатную остановку захвата.
-          Отключение автоматического старта оставляет ручные кнопки доступными.
-          При выходе из игры захват завершится самостоятельно. Журналы:
-          {status?.portable ? "data/auto-capture." : "local-data/auto-capture."}
+        <p>{tr("Помощник принимает только запуск и штатную остановку захвата. Отключение автоматического старта оставляет ручные кнопки доступными. При выходе из игры захват завершится самостоятельно. Журналы:")}{status?.portable ? "data/auto-capture." : "local-data/auto-capture."}
         </p>
       </details>
       {copied && (
-        <p role="status">
-          Команда скопирована. Выполните её в PowerShell администратора.
-        </p>
+        <p role="status">{tr("Команда скопирована. Выполните её в PowerShell администратора.")}</p>
       )}
     </section>
   );
 }
-createRoot(document.getElementById("root")!).render(<App />);
+document.documentElement.lang = language;
+void loadGameLanguage().catch(console.error).finally(() => {
+  createRoot(document.getElementById("root")!).render(<App />);
+});

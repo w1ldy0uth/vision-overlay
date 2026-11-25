@@ -1,5 +1,5 @@
 /** Unique acyclic 3:1 tier paths supplied by the validated catalog. Each attempt
- * uses a scratch ledger: a failed batch consumes neither its ingredients nor mora.
+ * uses a scratch ledger so a failed batch leaves every ingredient available.
  */
 export function craftFromStock(id, wanted, recipes, rank, remaining, commit) {
   const attempt=count=>{
@@ -15,9 +15,8 @@ export function craftFromStock(id, wanted, recipes, rank, remaining, commit) {
       if(!r||path.has(id)||path.size>=16||!Number.isInteger(rank)||rank<r.requiredAdventureRank)return false;
       const visited=new Set(path);visited.add(id);
       if(!ensure(r.inputId,need*r.inputCount,visited))return false;
-      const cost=need*r.mora,money=left(202);
-      if(!Number.isSafeInteger(cost)||money===null||money<cost)return false;
-      ledger.set(202,money-cost);
+      const cost=need*r.mora;
+      if(!Number.isSafeInteger(cost))return false;
       steps.push({recipeId:r.recipeId,itemId:id,count:need,inputId:r.inputId,inputCount:need*r.inputCount,mora:cost});
       return true;
     }

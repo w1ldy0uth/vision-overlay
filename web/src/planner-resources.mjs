@@ -4,7 +4,7 @@ const groups = [
   ["mob", "Материалы противников"],
   ["local", "Местные диковинки"],
   ["weapon", "Материалы возвышения оружия"],
-  ["books", "Книги талантов"],
+  ["books", "Материалы улучшения талантов"],
   ["weekly", "Материалы еженедельных боссов"],
   ["gems", "Камни возвышения персонажей"],
   ["other", "Другие материалы"],
@@ -33,7 +33,7 @@ export function groupPlannerResources(rows, catalog) {
       group = "local";
     } else if ((id >= 114000 && id < 115000) || label === "Возвышение оружия") {
       group = "weapon";
-    } else if (label === "Таланты персонажей" && Number(item?.rarity) < 5) {
+    } else if (id === 104319 || (label === "Таланты персонажей" && Number(item?.rarity) < 5)) {
       group = "books";
     } else if ((id >= 104100 && id < 104200) || label === "Возвышение персонажей") {
       group = "gems";

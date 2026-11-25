@@ -13,20 +13,19 @@ function craft(want,stock,rank=60) {
  return {state,result};
 }
 test('recursive tier upgrade consumes nine shards once and charges all intermediate crafts',()=>{
- const {state,result:r}=craft(2,{104121:9,202:10000});
- assert.equal(r.count,1);assert.equal(r.mora,1800);assert.equal(state.get(104121),0);assert.equal(state.get(202),8200);
+ const {state,result:r}=craft(2,{104121:9,202:0});
+ assert.equal(r.count,1);assert.equal(r.mora,1800);assert.equal(state.get(104121),0);assert.equal(state.get(202),0);
  assert.deepEqual(r.inputs,[{id:104121,count:9}]);assert.deepEqual(r.steps.map(s=>[s.itemId,s.count]),[[104122,3],[104123,1]]);
 });
-test('partial intermediate stock is used before crafting more; batches commit only when affordable',()=>{
- const r=craft(1,{104122:2,104121:3,202:1200});assert.equal(r.result.count,1);assert.equal(r.result.mora,1200);
- const insufficient=craft(1,{104122:2,104121:3,202:1199});assert.equal(insufficient.result.count,0);assert.equal(insufficient.state.get(104121),3);assert.equal(insufficient.state.get(104122),2);assert.equal(insufficient.state.get(202),1199);
+test('partial intermediate stock is used first, and an incomplete batch leaves stock available',()=>{
+ const r=craft(1,{104122:2,104121:3});assert.equal(r.result.count,1);assert.equal(r.result.mora,1200);
+ const insufficient=craft(1,{104122:2,104121:2});assert.equal(insufficient.result.count,0);assert.equal(insufficient.state.get(104121),2);assert.equal(insufficient.state.get(104122),2);
 });
 test('unknown stocks, missing rank and rank locks cannot promise a craft; no random rewards are produced',()=>{
- assert.equal(craft(1,{104121:9,202:null}).result.count,0);
- assert.equal(craft(1,{104122:null,202:10000}).result.count,0);
- assert.equal(craft(1,{104121:9,202:10000},34).result.count,0);
- assert.equal(craft(1,{104121:9,202:10000},null).result.count,0);
- assert.equal(craft(1,{104121:9,202:1800},35).result.count,1);
+ assert.equal(craft(1,{104122:null}).result.count,0);
+ assert.equal(craft(1,{104121:9},34).result.count,0);
+ assert.equal(craft(1,{104121:9},null).result.count,0);
+ assert.equal(craft(1,{104121:9},35).result.count,1);
 });
 const fixture=JSON.parse(fs.readFileSync(new URL('./fixtures/leveling.json',import.meta.url)));
 function setup(materials=[{id:104123,count:1}],money=50000) {
@@ -46,10 +45,13 @@ test('all direct requirements of a goal are reserved before its raw materials ma
  const {catalog,goals,data}=setup([{id:104123,count:1},{id:104121,count:3}]);
  const r=allocateGoals([goals[0]],catalog,data);assert.equal(r.plans[0].materials[0].crafted,0);assert.equal(r.plans[0].materials[1].allocated,3);assert.equal(r.craftInputs.length,0);
 });
-test('upgrade mora has priority; insufficient or unknown money cannot spend raw ingredients speculatively',()=>{
+test('crafting is quoted with an insufficient or unknown wallet, and adds to the mora requirement',()=>{
  for(const amount of [20000,21799,null]) {
   const {catalog,goals,data}=setup(undefined,amount);const r=allocateGoals([goals[0]],catalog,data);
-  assert.equal(r.plans[0].materials[0].crafted,0);assert.equal(r.craftInputs.length,0);
+  assert.equal(r.plans[0].materials[0].crafted,1);assert.equal(r.craftInputs[0].count,9);
+  assert.equal(r.plans[0].mora.count,21800);
+  assert.equal(r.plans[0].mora.missing,amount===null?null:21800-amount);
+  assert.equal(r.plans[0].ready,false);
  }
 });
 test('real crafting events replace the virtual supply without double-counting and old catalogs stay readable',()=>{
@@ -57,4 +59,31 @@ test('real crafting events replace the virtual supply without double-counting an
  data.collections.material_stacks=[{confirmation:'observed',values:{item_id:104123,count:1}}];data.collections.wallet[0].values.count-=1800;
  const after=allocateGoals([goals[0]],catalog,data);assert.equal(before.plans[0].materials[0].crafted,1);assert.equal(after.plans[0].materials[0].allocated,1);assert.equal(after.plans[0].materials[0].crafted,0);assert.equal(after.plans[0].mora.count,20000);
  delete catalog.crafting;assert.doesNotThrow(()=>allocateGoals(goals,catalog,data));
+});
+
+test('every goal gets its direct stock before any goal can use the surplus to craft',()=>{
+ const {catalog,goals,data}=setup([{id:104123,count:1},{id:104121,count:3}]);
+ data.collections.material_stacks[0].values.count=12;
+ const result=allocateGoals(goals,catalog,data);
+ const ingredient=result.materials.find(row=>row.id===104121);
+ assert.deepEqual(ingredient,{id:104121,count:6,owned:12,allocated:6,crafted:0,craftInput:0,missing:0});
+ assert.equal(result.materials.find(row=>row.id===104123).missing,2);
+});
+
+test('three goals fill four recipe tiers in order, leaving only the highest tier short',()=>{
+ const requirements=[104124,104123,104122,104121].map(id=>({id,count:1}));
+ const {catalog,goals,data}=setup(requirements,0);
+ catalog.crafting.recipes={...recipes,104124:{recipeId:15006,inputId:104123,inputCount:3,outputCount:1,mora:2700,requiredAdventureRank:45}};
+ goals.push({goal_id:'3',values:{...goals[0].values,priority:2,entity_key:'3'}});
+ data.collections.characters.push({...data.collections.characters[0],entity_key:'3'});
+ data.collections.material_stacks[0].values.count=65;
+ data.collections.material_stacks.push({confirmation:'observed',values:{item_id:104122,count:1}});
+
+ const result=allocateGoals(goals,catalog,data);
+ const row=id=>result.materials.find(material=>material.id===id);
+ assert.deepEqual([104121,104122,104123,104124].map(id=>[row(id).crafted,row(id).missing]),[[0,0],[2,0],[3,0],[1,2]]);
+ assert.equal(row(104121).craftInput,60);
+ assert.equal(row(104121).count,63);
+ assert.equal(row(202).missing,row(202).count);
+ assert.equal(row(202).count,74100);
 });

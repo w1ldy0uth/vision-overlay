@@ -30,16 +30,40 @@ fn valid_name(name: &str) -> bool {
         && (name.starts_with("UI_") || name.starts_with("Skill_"))
         && name.bytes().all(|b| b.is_ascii_alphanumeric() || b == b'_')
 }
-fn png(bytes: &[u8]) -> bool {
-    bytes.len() <= LIMIT && bytes.starts_with(b"\x89PNG\r\n\x1a\n")
+fn format(bytes: &[u8]) -> Option<(&'static str, &'static str)> {
+    if bytes.len() > LIMIT {
+        return None;
+    }
+    if bytes.starts_with(b"\x89PNG\r\n\x1a\n") {
+        return Some(("png", "image/png"));
+    }
+    if bytes.len() >= 20
+        && bytes.starts_with(b"RIFF")
+        && matches!(&bytes[8..16], b"WEBPVP8 " | b"WEBPVP8L" | b"WEBPVP8X")
+        && u32::from_le_bytes(bytes[4..8].try_into().ok()?) as usize == bytes.len() - 8
+    {
+        return Some(("webp", "image/webp"));
+    }
+    None
 }
-fn image(bytes: Vec<u8>) -> Response {
+fn image(bytes: Vec<u8>, mime: &'static str) -> Response {
     Response::builder()
-        .header(header::CONTENT_TYPE, "image/png")
+        .header(header::CONTENT_TYPE, mime)
         .header(header::CACHE_CONTROL, "public, max-age=86400")
         .header("X-Content-Type-Options", "nosniff")
         .body(Body::from(bytes))
         .unwrap()
+}
+
+fn cached(root: &FsPath, name: &str) -> Option<Response> {
+    for extension in ["png", "webp"] {
+        if let Ok(bytes) = std::fs::read(root.join(format!("{name}.{extension}")))
+            && let Some((_, mime)) = format(&bytes)
+        {
+            return Some(image(bytes, mime));
+        }
+    }
+    None
 }
 #[derive(serde::Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -71,11 +95,8 @@ pub async fn icon(
         }
         root.push(version);
     }
-    let file = root.join(format!("{name}.png"));
-    if let Ok(bytes) = std::fs::read(&file)
-        && png(&bytes)
-    {
-        return image(bytes);
+    if let Some(response) = cached(&root, &name) {
+        return response;
     }
     if FAILURES
         .lock()
@@ -83,8 +104,8 @@ pub async fn icon(
         .get(&name)
         .is_some_and(|t| t.elapsed() < Duration::from_secs(60))
     {
-        if let Some(bytes) = last_good(&base, &name) {
-            return image(bytes);
+        if let Some(response) = last_good(&base, &name) {
+            return response;
         }
         return (
             StatusCode::SERVICE_UNAVAILABLE,
@@ -98,20 +119,31 @@ pub async fn icon(
     let Ok(_permit) = REQUESTS.acquire().await else {
         return StatusCode::SERVICE_UNAVAILABLE.into_response();
     };
-    if let Ok(bytes) = std::fs::read(&file)
-        && png(&bytes)
-    {
-        return image(bytes);
+    if let Some(response) = cached(&root, &name) {
+        return response;
     }
     let mut result = Err(anyhow::anyhow!("Icon unavailable"));
-    // Both providers publish UI assets publicly. The second also works where
-    // the first denies automated clients; older mirrors can legitimately lack new icons.
-    for url in [
+    // Project Amber includes inventory icons missing from the other mirrors.
+    let mut urls = vec![
         format!("https://enka.network/ui/{name}.png"),
+        format!("https://gi.yatta.moe/assets/UI/{name}.png"),
         format!(
             "https://raw.githubusercontent.com/PathOfGenshin/resources/main/resources/gi/Sprite/{name}.png"
         ),
-    ] {
+    ];
+    if name.starts_with("UI_MonsterIcon_") {
+        urls.push(format!("https://static.nanoka.cc/assets/gi/{name}.webp"));
+    }
+    // The ingame database serves additional item thumbnails by numeric item ID.
+    if let Some(id) = name
+        .strip_prefix("UI_ItemIcon_")
+        .and_then(|suffix| suffix.parse::<u32>().ok())
+    {
+        urls.push(format!(
+            "https://cdn.th.gl/genshin-impact/icons/db/item_{id}.webp"
+        ));
+    }
+    for url in urls {
         result = async {
             let mut response = CLIENT.get(url).send().await?.error_for_status()?;
             if response.content_length().is_some_and(|n| n > LIMIT as u64) {
@@ -122,8 +154,9 @@ pub async fn icon(
                 anyhow::ensure!(bytes.len() + chunk.len() <= LIMIT, "Icon size limit");
                 bytes.extend_from_slice(&chunk);
             }
-            anyhow::ensure!(png(&bytes), "Invalid icon format");
-            Ok::<_, anyhow::Error>(bytes)
+            let (extension, mime) =
+                format(&bytes).ok_or_else(|| anyhow::anyhow!("Invalid icon format"))?;
+            Ok::<_, anyhow::Error>((bytes, extension, mime))
         }
         .await;
         if result.is_ok() {
@@ -131,8 +164,9 @@ pub async fn icon(
         }
     }
     match result {
-        Ok(bytes) => {
+        Ok((bytes, extension, mime)) => {
             FAILURES.lock().unwrap().remove(&name);
+            let file = root.join(format!("{name}.{extension}"));
             // Cache failure must never prevent showing a successfully loaded icon.
             if let Some(parent) = file.parent()
                 && std::fs::create_dir_all(parent).is_ok()
@@ -143,7 +177,7 @@ pub async fn icon(
                     let _ = std::fs::remove_file(&temporary);
                 }
             }
-            image(bytes)
+            image(bytes, mime)
         }
         Err(_) => {
             let mut failures = FAILURES.lock().unwrap();
@@ -153,8 +187,8 @@ pub async fn icon(
             }
             failures.insert(name.clone(), Instant::now());
             drop(failures);
-            if let Some(bytes) = last_good(&base, &name) {
-                return image(bytes);
+            if let Some(response) = last_good(&base, &name) {
+                return response;
             }
             (
                 StatusCode::SERVICE_UNAVAILABLE,
@@ -168,13 +202,9 @@ pub async fn icon(
     }
 }
 
-fn last_good(root: &FsPath, name: &str) -> Option<Vec<u8>> {
-    let filename = format!("{name}.png");
-    let direct = root.join(&filename);
-    if let Ok(bytes) = std::fs::read(direct)
-        && png(&bytes)
-    {
-        return Some(bytes);
+fn last_good(root: &FsPath, name: &str) -> Option<Response> {
+    if let Some(response) = cached(root, name) {
+        return Some(response);
     }
     for entry in std::fs::read_dir(root).ok()?.flatten().take(128) {
         let key = entry.file_name();
@@ -182,10 +212,8 @@ fn last_good(root: &FsPath, name: &str) -> Option<Vec<u8>> {
         if key.len() != 64 || !key.bytes().all(|b| b.is_ascii_hexdigit()) {
             continue;
         }
-        if let Ok(bytes) = std::fs::read(entry.path().join(&filename))
-            && png(&bytes)
-        {
-            return Some(bytes);
+        if let Some(response) = cached(&entry.path(), name) {
+            return Some(response);
         }
     }
     None
@@ -208,6 +236,12 @@ mod tests {
             assert!(!valid_name(s));
         }
         assert!(!valid_name(&format!("UI_{}", "a".repeat(161))));
-        assert!(!png(b"<html>not a PNG</html>"));
+        assert!(format(b"<html>not an image</html>").is_none());
+        assert_eq!(format(b"\x89PNG\r\n\x1a\n"), Some(("png", "image/png")));
+        assert_eq!(
+            format(b"RIFF\x0c\0\0\0WEBPVP8L\0\0\0\0"),
+            Some(("webp", "image/webp"))
+        );
+        assert!(format(b"RIFF\x10\0\0\0WEBPVP8L\0\0\0\0").is_none());
     }
 }

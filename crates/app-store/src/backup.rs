@@ -134,7 +134,10 @@ async fn schema(db: &mut SqliteConnection) -> Result<Vec<(String, String, Option
     .await?)
 }
 async fn validate_database(path: &Path, version: i64) -> Result<()> {
-    ensure!(matches!(version, 2..=8), "Unsupported database version");
+    ensure!(
+        (2..=crate::DATABASE_SCHEMA_VERSION).contains(&version),
+        "Unsupported database version"
+    );
     let expected_dir = tempfile::tempdir()?;
     let mut expected = Store::open(&expected_dir.path().join("expected.sqlite3")).await?;
     let mut expected_schema = schema(&mut expected.connection).await?;
@@ -163,6 +166,11 @@ async fn validate_database(path: &Path, version: i64) -> Result<()> {
     if version < 8 {
         expected_schema
             .retain(|(_, name, _)| !matches!(name.as_str(), "wish_live" | "wish_live_api_match"));
+    }
+    if version < 9 {
+        expected_schema.retain(|(_, name, _)| {
+            !matches!(name.as_str(), "planner_presets" | "planner_preset_goals")
+        });
     }
     let mut db = connect(path, true).await?;
     ensure!(
@@ -341,7 +349,7 @@ pub async fn package(
         format: "vision-overlay-backup".into(),
         format_version: 1,
         application_version: env!("CARGO_PKG_VERSION").into(),
-        database_schema_version: 8,
+        database_schema_version: crate::DATABASE_SCHEMA_VERSION,
         created_at: time::OffsetDateTime::now_utc()
             .format(&time::format_description::well_known::Rfc3339)?,
         revision: revision.to_string(),

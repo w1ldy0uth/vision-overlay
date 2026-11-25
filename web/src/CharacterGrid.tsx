@@ -1,14 +1,15 @@
+import { tr } from "./i18n.mjs";
 import { ItemIcon } from "./InventoryViews";
 import { characterElement } from "./characters.mjs";
 import { characterLevel, characterConstellation } from "./model.mjs";
 export const elements: Record<string, [string, string]> = {
-  Fire: ["Пиро", "♨"],
-  Water: ["Гидро", "◉"],
-  Wind: ["Анемо", "❧"],
-  Ice: ["Крио", "❄"],
-  Rock: ["Гео", "◆"],
-  Electric: ["Электро", "ϟ"],
-  Grass: ["Дендро", "❀"],
+  Fire: [tr("Пиро"), "♨"],
+  Water: [tr("Гидро"), "◉"],
+  Wind: [tr("Анемо"), "❧"],
+  Ice: [tr("Крио"), "❄"],
+  Rock: [tr("Гео"), "◆"],
+  Electric: [tr("Электро"), "ϟ"],
+  Grass: [tr("Дендро"), "❀"],
 };
 export function CharacterGrid({
   rows,
@@ -35,7 +36,7 @@ export function CharacterGrid({
               <span
                 className={`character-element element-${element}`}
                 title={label[0]}
-                aria-label={`Стихия: ${label[0]}`}
+                aria-label={tr("Стихия: {0}", label[0])}
               >
                 {element === "Ice" ? (
                   <svg
@@ -71,7 +72,7 @@ export function CharacterGrid({
               <button
                 type="button"
                 className={`character-favorite${starred ? " selected" : ""}`}
-                aria-label={`${starred ? "Убрать из избранного" : "В избранное"}: ${name(r.values)}`}
+                aria-label={`${starred ? tr("Убрать из избранного") : tr("В избранное")}: ${name(r.values)}`}
                 aria-pressed={starred}
                 onClick={() => toggleFavorite(id)}
               >
@@ -83,8 +84,8 @@ export function CharacterGrid({
               className="character-open"
               aria-label={
                 r.unowned
-                  ? `${name(r.values)} — не получен`
-                  : `Открыть персонажа ${name(r.values)}`
+                  ? tr("{0} — не получен", name(r.values))
+                  : tr("Открыть персонажа {0}", name(r.values))
               }
               onClick={() => onSelect(r)}
             >
@@ -97,14 +98,13 @@ export function CharacterGrid({
               <h3>{name(r.values)}</h3>
               {rarity?.(r) > 0 && <span className="inventory-card-stars">{"★".repeat(rarity(r))}</span>}
               {r.unowned ? (
-                <small>Не получен</small>
+                <small>{tr("Не получен")}</small>
               ) : (
                 <>
-                  <span>
-                    Ур. {characterLevel(r.values)}{" "}
+                  <span>{tr("Ур. ")}{characterLevel(r.values)}{" "}
                     <b>C{characterConstellation(r.values)}</b>
                   </span>
-                  <small>Дружба {r.values.friendship?.level ?? "—"}</small>
+                  <small>{tr("Дружба ")}{r.values.friendship?.level ?? "—"}</small>
                 </>
               )}
             </button>

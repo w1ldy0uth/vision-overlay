@@ -1,10 +1,11 @@
+import { tr, uiLocale } from "./i18n.mjs";
 import { useState, useEffect, useRef } from "react";
 const size = (value: any) => {
   const bytes = Number(value);
   const unit = bytes < 1024 ? "Б" : bytes < 1024 * 1024 ? "КБ" : "МБ";
   const amount =
     unit === "Б" ? bytes : unit === "КБ" ? bytes / 1024 : bytes / 1024 / 1024;
-  return `${amount.toLocaleString("ru-RU", { maximumFractionDigits: 1 })} ${unit}`;
+  return `${amount.toLocaleString(uiLocale, { maximumFractionDigits: 1 })} ${tr(unit)}`;
 };
 export function DiagnosticExport({ capture }: { capture: string }) {
   const [packets, setPackets] = useState(false),
@@ -49,32 +50,26 @@ export function DiagnosticExport({ capture }: { capture: string }) {
       });
       const result = await response.json();
       if (!response.ok)
-        throw new Error(result.error?.message ?? "Не удалось создать архив");
+        throw new Error(result.error?.message ?? tr("Не удалось создать архив"));
       if (version === generation.current) setReady(result);
     } catch (e) {
       if (version === generation.current)
         setError(
-          `Не удалось подготовить архив. ${e instanceof Error ? e.message : ""}`,
+          tr("Не удалось подготовить архив. {0}", e instanceof Error ? e.message : ""),
         );
     } finally {
       if (version === generation.current) setBusy(false);
     }
   }
   return (
-    <section className="diagnostic-export" aria-label="Экспорт диагностики">
-      <h2>Экспорт для баг-репорта</h2>
-      <p>
-        Архив выбранного захвата: журналы приложения и захвата, сохранённые
-        снимки, события из БД и сведения о версии справочника. База данных
-        целиком и файлы с ключами не включаются.
-      </p>
+    <section className="diagnostic-export" aria-label={tr("Экспорт диагностики")}>
+      <h2>{tr("Экспорт для баг-репорта")}</h2>
+      <p>{tr("Архив выбранного захвата: журналы приложения и захвата, сохранённые снимки, события из БД и сведения о версии справочника. База данных целиком и файлы с ключами не включаются.")}</p>
       {!capture && (
-        <p className="footnote">Сначала выберите захват в списке выше.</p>
+        <p className="footnote">{tr("Сначала выберите захват в списке выше.")}</p>
       )}
-      <label className="diagnostic-description">
-        Описание проблемы
-        <textarea
-          aria-label="Описание проблемы"
+      <label className="diagnostic-description">{tr("Описание проблемы")}<textarea
+          aria-label={tr("Описание проблемы")}
           maxLength={2000}
           rows={3}
           value={description}
@@ -83,7 +78,7 @@ export function DiagnosticExport({ capture }: { capture: string }) {
             setDescription(e.target.value);
             setReady(null);
           }}
-          placeholder="Что произошло, что ожидалось и примерное время события"
+          placeholder={tr("Что произошло, что ожидалось и примерное время события")}
         />
       </label>
       <label className="diagnostic-packets">
@@ -95,44 +90,27 @@ export function DiagnosticExport({ capture }: { capture: string }) {
             setPackets(e.target.checked);
             setReady(null);
           }}
-        />
-        Включить сохранённые raw-пакеты
-      </label>
-      <p className="footnote">
-        Архив содержит UID и игровые данные. Raw-пакеты не обезличиваются и
-        могут содержать сетевые и сессионные данные. Перед отправкой архива
-        другим людям проверьте его содержимое. Ничего не отправляется
-        автоматически.
-      </p>
-      <p className="footnote">
-        Захват можно не останавливать. В архив попадут только уже записанные
-        данные; вытесненные сегменты восстановить нельзя. Для raw-пакетов без
-        начала записи повторное декодирование может быть недоступно.
-      </p>
+        />{tr("Включить сохранённые raw-пакеты")}</label>
+      <p className="footnote">{tr("Архив содержит UID и игровые данные. Raw-пакеты не обезличиваются и могут содержать сетевые и сессионные данные. Перед отправкой архива другим людям проверьте его содержимое. Ничего не отправляется автоматически.")}</p>
+      <p className="footnote">{tr("Захват можно не останавливать. В архив попадут только уже записанные данные; вытесненные сегменты восстановить нельзя. Для raw-пакетов без начала записи повторное декодирование может быть недоступно.")}</p>
       <button disabled={!capture || busy} onClick={() => void prepare()}>
-        {busy ? "Готовим архив…" : "Подготовить диагностический ZIP"}
+        {busy ? tr("Готовим архив…") : tr("Подготовить диагностический ZIP")}
       </button>
       {error && <p role="alert">{error}</p>}
       {started && (
-        <p role="status">
-          Загрузка началась. Для повторного скачивания подготовьте архив заново.
-        </p>
+        <p role="status">{tr("Загрузка началась. Для повторного скачивания подготовьте архив заново.")}</p>
       )}
       {ready && (
         <div className="diagnostic-ready" role="status">
-          <strong>Архив готов · {size(ready.bytes)}</strong>
-          <p>
-            Файлов: {ready.manifest.files.length}. Raw-пакеты:{" "}
+          <strong>{tr("Архив готов · ")}{size(ready.bytes)}</strong>
+          <p>{tr("Файлов: ")}{ready.manifest.files.length}{tr(". Raw-пакеты:")}{" "}
             {ready.manifest.raw.included
-              ? `${ready.manifest.raw.segments} сегм.`
-              : "не включены"}
+              ? tr("{0} сегм.", ready.manifest.raw.segments)
+              : tr("не включены")}
             .
           </p>
           {ready.manifest.warnings.length > 0 && (
-            <p>
-              В составе есть ограничения или пропуски — подробности ниже и в
-              manifest.json.
-            </p>
+            <p>{tr("В составе есть ограничения или пропуски — подробности ниже и в manifest.json.")}</p>
           )}
           <a
             href={ready.download_url}
@@ -141,14 +119,10 @@ export function DiagnosticExport({ capture }: { capture: string }) {
               setStarted(true);
               setTimeout(() => setReady(null), 0);
             }}
-          >
-            Скачать ZIP
-          </a>
-          <small>
-            Ссылка действует 15 минут и доступна для одного скачивания.
-          </small>
+          >{tr("Скачать ZIP")}</a>
+          <small>{tr("Ссылка действует 15 минут и доступна для одного скачивания.")}</small>
           <details>
-            <summary>Состав и ограничения архива</summary>
+            <summary>{tr("Состав и ограничения архива")}</summary>
             <ul>
               {ready.manifest.files.map((f: any) => (
                 <li key={f.path}>

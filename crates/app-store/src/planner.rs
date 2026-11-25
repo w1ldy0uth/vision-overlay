@@ -5,24 +5,89 @@ use serde_json::{Value, json};
 use sqlx::{Connection, Row};
 
 impl Store {
-    pub async fn planner_goals(&mut self, profile: &str) -> Result<Value> {
-        let count: i64 = sqlx::query_scalar("SELECT count(*) FROM profiles WHERE profile_id=?")
+    pub async fn planner_presets(&mut self, profile: &str) -> Result<Value> {
+        let exists: bool =
+            sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM profiles WHERE profile_id=?)")
+                .bind(profile)
+                .fetch_one(&mut self.connection)
+                .await?;
+        ensure!(exists, "Profile not found");
+        let rows: Vec<(String, String)> = sqlx::query_as("SELECT preset_id,name FROM planner_presets WHERE profile_id=? ORDER BY name COLLATE NOCASE,preset_id")
+            .bind(profile).fetch_all(&mut self.connection).await?;
+        let mut presets: Vec<_> = rows
+            .into_iter()
+            .map(|(id, name)| json!({"id":id,"name":name}))
+            .collect();
+        if !presets.iter().any(|p| p["id"] == "default") {
+            presets.insert(0, json!({"id":"default","name":"Основной"}));
+        }
+        Ok(json!({"presets":presets}))
+    }
+
+    pub async fn save_planner_preset(&mut self, profile: &str, request: Value) -> Result<Value> {
+        let name = request["name"]
+            .as_str()
+            .context("Missing preset name")?
+            .trim();
+        ensure!(
+            !name.is_empty() && name.chars().count() <= 64 && !name.chars().any(char::is_control),
+            "Invalid preset name"
+        );
+        let mut tx = self.connection.begin().await?;
+        let id = if let Some(id) = request["id"].as_str() {
+            if id != "default" {
+                let exists: bool = sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM planner_presets WHERE profile_id=? AND preset_id=?)")
+                    .bind(profile).bind(id).fetch_one(&mut *tx).await?;
+                ensure!(exists, "Preset not found");
+            }
+            id.to_owned()
+        } else {
+            let count: i64 = sqlx::query_scalar(
+                "SELECT count(*) FROM planner_presets WHERE profile_id=? AND preset_id!='default'",
+            )
             .bind(profile)
-            .fetch_one(&mut self.connection)
+            .fetch_one(&mut *tx)
             .await?;
-        ensure!(count == 1, "Profile not found");
-        let rows = sqlx::query("SELECT * FROM planner_goals WHERE profile_id=? ORDER BY goal_id")
-            .bind(profile)
-            .fetch_all(&mut self.connection)
-            .await?;
+            ensure!(count < 31, "Preset limit reached");
+            uuid::Uuid::new_v4().to_string()
+        };
+        ensure!(id == "default" || name.to_lowercase() != "основной" || sqlx::query_scalar::<_, bool>("SELECT EXISTS(SELECT 1 FROM planner_presets WHERE profile_id=? AND preset_id='default')")
+            .bind(profile).fetch_one(&mut *tx).await?, "Preset already exists");
+        let names: Vec<String> = sqlx::query_scalar(
+            "SELECT name FROM planner_presets WHERE profile_id=? AND preset_id!=?",
+        )
+        .bind(profile)
+        .bind(&id)
+        .fetch_all(&mut *tx)
+        .await?;
+        ensure!(
+            !names
+                .iter()
+                .any(|other| other.to_lowercase() == name.to_lowercase()),
+            "Preset already exists"
+        );
+        sqlx::query("INSERT INTO planner_presets(profile_id,preset_id,name) VALUES(?,?,?) ON CONFLICT(profile_id,preset_id) DO UPDATE SET name=excluded.name")
+            .bind(profile).bind(&id).bind(name).execute(&mut *tx).await?;
+        tx.commit().await?;
+        Ok(json!({"id":id,"name":name}))
+    }
+
+    pub async fn planner_goals(&mut self, profile: &str, preset: &str) -> Result<Value> {
+        let exists: bool = sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM profiles WHERE profile_id=? AND (?='default' OR EXISTS(SELECT 1 FROM planner_presets WHERE profile_id=profiles.profile_id AND preset_id=?)))")
+            .bind(profile).bind(preset).bind(preset).fetch_one(&mut self.connection).await?;
+        ensure!(exists, "Profile or preset not found");
+        let rows = sqlx::query("SELECT g.* FROM planner_goals g LEFT JOIN planner_preset_goals m USING(profile_id,goal_id) WHERE g.profile_id=? AND COALESCE(m.preset_id,'default')=? ORDER BY g.goal_id")
+            .bind(profile).bind(preset).fetch_all(&mut self.connection).await?;
         let goals=rows.into_iter().map(|r|Ok(json!({"goal_id":r.get::<String,_>("goal_id"),"revision":r.get::<i64,_>("revision").to_string(),"values":serde_json::from_str::<Value>(r.get("goal_json"))?}))).collect::<Result<Vec<_>>>()?;
         Ok(json!({"goals":goals}))
     }
     pub async fn save_planner_goal(&mut self, profile: &str, request: Value) -> Result<Value> {
         let obj = request.as_object().context("Missing request")?;
         ensure!(
-            obj.keys()
-                .all(|k| matches!(k.as_str(), "goal_id" | "revision" | "values" | "delete")),
+            obj.keys().all(|k| matches!(
+                k.as_str(),
+                "goal_id" | "revision" | "values" | "delete" | "preset_id"
+            )),
             "Unknown goal field"
         );
         let id = match request["goal_id"].as_str() {
@@ -36,6 +101,7 @@ impl Store {
             .as_str()
             .map(crate::reader::decimal)
             .transpose()?;
+        let preset = request["preset_id"].as_str().unwrap_or("default");
         let delete = request["delete"] == true;
         let v = &request["values"];
         let mut tx = self.connection.begin().await?;
@@ -45,11 +111,22 @@ impl Store {
                 .fetch_one(&mut *tx)
                 .await?;
         ensure!(profile_count == 1, "Profile not found");
+        if preset != "default" {
+            let exists: bool = sqlx::query_scalar(
+                "SELECT EXISTS(SELECT 1 FROM planner_presets WHERE profile_id=? AND preset_id=?)",
+            )
+            .bind(profile)
+            .bind(preset)
+            .fetch_one(&mut *tx)
+            .await?;
+            ensure!(exists, "Preset not found");
+        }
         let current: Option<i64> = sqlx::query_scalar(
-            "SELECT revision FROM planner_goals WHERE profile_id=? AND goal_id=?",
+            "SELECT g.revision FROM planner_goals g LEFT JOIN planner_preset_goals m USING(profile_id,goal_id) WHERE g.profile_id=? AND g.goal_id=? AND COALESCE(m.preset_id,'default')=?",
         )
         .bind(profile)
         .bind(&id)
+        .bind(preset)
         .fetch_optional(&mut *tx)
         .await?;
         ensure!(current == expected, "Goal changed; reload before editing");
@@ -103,7 +180,7 @@ impl Store {
                     "Invalid equipped weapon target"
                 );
             }
-            let duplicate:i64=sqlx::query_scalar("SELECT count(*) FROM planner_goals WHERE profile_id=? AND goal_id!=? AND json_extract(goal_json,'$.collection')=? AND json_extract(goal_json,'$.entity_key')=?").bind(profile).bind(&id).bind(collection).bind(key).fetch_one(&mut *tx).await?;
+            let duplicate:i64=sqlx::query_scalar("SELECT count(*) FROM planner_goals g LEFT JOIN planner_preset_goals m USING(profile_id,goal_id) WHERE g.profile_id=? AND COALESCE(m.preset_id,'default')=? AND g.goal_id!=? AND json_extract(goal_json,'$.collection')=? AND json_extract(goal_json,'$.entity_key')=?").bind(profile).bind(preset).bind(&id).bind(collection).bind(key).fetch_one(&mut *tx).await?;
             ensure!(
                 duplicate == 0,
                 "An entity already has a goal; edit it instead"
@@ -139,11 +216,11 @@ impl Store {
             }
             if current.is_none() {
                 let count: i64 =
-                    sqlx::query_scalar("SELECT count(*) FROM planner_goals WHERE profile_id=?")
-                        .bind(profile)
+                    sqlx::query_scalar("SELECT count(*) FROM planner_goals g LEFT JOIN planner_preset_goals m USING(profile_id,goal_id) WHERE g.profile_id=? AND COALESCE(m.preset_id,'default')=?")
+                        .bind(profile).bind(preset)
                         .fetch_one(&mut *tx)
                         .await?;
-                ensure!(count < 100, "Goal limit reached");
+                ensure!(count < 256, "Goal limit reached");
             }
         }
         sqlx::query("UPDATE store_meta SET revision=revision+1 WHERE singleton=1")
@@ -159,7 +236,18 @@ impl Store {
                 .execute(&mut *tx)
                 .await?;
         } else {
-            sqlx::query("INSERT INTO planner_goals VALUES(?,?,?,?) ON CONFLICT(profile_id,goal_id) DO UPDATE SET goal_json=excluded.goal_json,revision=excluded.revision").bind(profile).bind(&id).bind(v.to_string()).bind(revision).execute(&mut *tx).await?;
+            let saved = sqlx::query("INSERT INTO planner_goals VALUES(?,?,?,?) ON CONFLICT(profile_id,goal_id) DO UPDATE SET goal_json=excluded.goal_json,revision=excluded.revision WHERE planner_goals.revision=?").bind(profile).bind(&id).bind(v.to_string()).bind(revision).bind(expected).execute(&mut *tx).await?;
+            ensure!(saved.rows_affected() == 1, "Goal belongs to another preset");
+            if current.is_none() && preset != "default" {
+                sqlx::query(
+                    "INSERT INTO planner_preset_goals(profile_id,goal_id,preset_id) VALUES(?,?,?)",
+                )
+                .bind(profile)
+                .bind(&id)
+                .bind(preset)
+                .execute(&mut *tx)
+                .await?;
+            }
         }
         let capture = uuid::Uuid::new_v4().to_string();
         sqlx::query("INSERT INTO captures VALUES(?,?,?,?,?,1,'system',strftime('%Y-%m-%dT%H:%M:%fZ','now'))").bind(&capture).bind(format!("planner:{capture}")).bind("{}").bind("{\"mode\":\"system\"}").bind("planner-v1").execute(&mut *tx).await?;
@@ -238,6 +326,51 @@ mod tests {
             .await
             .is_err()
         );
+        s.save_planner_preset(&id, json!({"id":"default","name":"Максимум"}))
+            .await
+            .unwrap();
+        let alternate = s
+            .save_planner_preset(&id, json!({"name":"До 70"}))
+            .await
+            .unwrap();
+        let alternate_id = alternate["id"].as_str().unwrap();
+        assert_eq!(
+            s.planner_goals(&id, alternate_id).await.unwrap()["goals"],
+            json!([])
+        );
+        let mut alternate_values = v.clone();
+        alternate_values["level"] = json!(70);
+        let alternate_goal = s
+            .save_planner_goal(
+                &id,
+                json!({"preset_id":alternate_id,"values":alternate_values}),
+            )
+            .await
+            .unwrap();
+        assert_eq!(
+            s.planner_goals(&id, "default").await.unwrap()["goals"][0]["values"]["level"],
+            20
+        );
+        assert_eq!(
+            s.planner_goals(&id, alternate_id).await.unwrap()["goals"][0]["values"]["level"],
+            70
+        );
+        assert!(
+            s.save_planner_goal(
+                &id,
+                json!({"goal_id":goal,"revision":rev,"preset_id":alternate_id,"delete":true})
+            )
+            .await
+            .is_err()
+        );
+        assert!(
+            s.save_planner_goal(
+                &id,
+                json!({"goal_id":goal,"preset_id":alternate_id,"values":v})
+            )
+            .await
+            .is_err()
+        );
         let path = temp.path().join("planner.visionbackup");
         s.backup(
             &path,
@@ -253,12 +386,28 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(
-            s.planner_goals(&id).await.unwrap(),
-            restored.planner_goals(&id).await.unwrap()
+            s.planner_goals(&id, "default").await.unwrap(),
+            restored.planner_goals(&id, "default").await.unwrap()
+        );
+        assert_eq!(
+            s.planner_presets(&id).await.unwrap(),
+            restored.planner_presets(&id).await.unwrap()
+        );
+        assert_eq!(
+            s.planner_goals(&id, alternate_id).await.unwrap(),
+            restored.planner_goals(&id, alternate_id).await.unwrap()
+        );
+        s.save_planner_goal(&id, json!({"goal_id":alternate_goal["goal_id"],"revision":alternate_goal["revision"],"preset_id":alternate_id,"delete":true})).await.unwrap();
+        assert_eq!(
+            s.planner_goals(&id, alternate_id).await.unwrap()["goals"],
+            json!([])
         );
         s.save_planner_goal(&id, json!({"goal_id":goal,"revision":rev,"delete":true}))
             .await
             .unwrap();
-        assert_eq!(s.planner_goals(&id).await.unwrap()["goals"], json!([]));
+        assert_eq!(
+            s.planner_goals(&id, "default").await.unwrap()["goals"],
+            json!([])
+        );
     }
 }

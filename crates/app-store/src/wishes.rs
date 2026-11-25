@@ -364,7 +364,7 @@ mod tests {
         .await
         .unwrap();
         let validated = crate::backup::validate(&path).await.unwrap();
-        assert_eq!(validated.manifest.database_schema_version, 8);
+        assert_eq!(validated.manifest.database_schema_version, 9);
         let mut restored = Store::open(&temp.path().join("restored.sqlite3"))
             .await
             .unwrap();

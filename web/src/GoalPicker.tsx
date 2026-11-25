@@ -1,3 +1,4 @@
+import { gameText, tr, uiLocale } from "./i18n.mjs";
 import { useEffect, useRef, useState } from "react";
 import { CharacterGrid, elements } from "./CharacterGrid";
 import { InventoryGrid } from "./InventoryViews";
@@ -46,43 +47,43 @@ export function GoalPicker({ choices, catalog, characters, name, onSelect, onClo
     subtypeOptions(candidates, items).map(([label]: [string, number]) => [label, label]);
   const rarityOptions = [...new Set(candidates.map(row => rarityOf(row, catalog)))].filter(Boolean).sort((a, b) => b - a);
   const level = (row: GoalChoice) => isCharacter ? characterLevel(row.values) : Number(row.values.level ?? 0);
-  const needle = search.trim().toLocaleLowerCase("ru");
+  const needle = search.trim().toLocaleLowerCase(uiLocale);
   const rows = candidates.filter(row =>
-    name(row.values).toLocaleLowerCase("ru").includes(needle) &&
+    name(row.values).toLocaleLowerCase(uiLocale).includes(needle) &&
     (!type || (isCharacter ? characterElement(row.values, catalog) : itemSubtype(row, items)) === type) &&
     (!rarity || rarityOf(row, catalog) === Number(rarity))
-  ).sort((a, b) => (sort === "level" ? level(b) - level(a) : 0) || name(a.values).localeCompare(name(b.values), "ru"));
+  ).sort((a, b) => (sort === "level" ? level(b) - level(a) : 0) || name(a.values).localeCompare(name(b.values), uiLocale));
 
   return <dialog ref={dialog} className="goal-picker" aria-labelledby="goal-picker-title"
     onCancel={e => { e.preventDefault(); onClose(); }}>
     <div className="goal-picker-toolbar">
       <div className="goal-picker-heading">
-        <h2 id="goal-picker-title">Добавить цель</h2>
-        <button type="button" aria-label="Закрыть выбор цели" onClick={onClose}>×</button>
+        <h2 id="goal-picker-title">{tr("Добавить цель")}</h2>
+        <button type="button" aria-label={tr("Закрыть выбор цели")} onClick={onClose}>×</button>
       </div>
-      <div className="goal-picker-tabs" aria-label="Виды целей">
+      <div className="goal-picker-tabs" aria-label={tr("Виды целей")}>
         {(["characters", "weapons"] as const).map(id => <button key={id} type="button"
           aria-pressed={collection === id}
           onClick={() => { setCollection(id); setType(""); setRarity(""); }}>
-          {id === "characters" ? "Персонажи" : "Оружие"}
+          {id === "characters" ? tr("Персонажи") : tr("Оружие")}
         </button>)}
       </div>
       <div className="goal-picker-filters">
-        <input aria-label="Поиск по названию" placeholder="Поиск по названию" autoFocus value={search} onChange={e => setSearch(e.target.value)} />
-        <select aria-label="Сортировка" value={sort} onChange={e => setSort(e.target.value)}>
-          <option value="name">По названию</option><option value="level">По уровню</option>
+        <input aria-label={tr("Поиск по названию")} placeholder={tr("Поиск по названию")} autoFocus value={search} onChange={e => setSearch(e.target.value)} />
+        <select aria-label={tr("Сортировка")} value={sort} onChange={e => setSort(e.target.value)}>
+          <option value="name">{tr("По названию")}</option><option value="level">{tr("По уровню")}</option>
         </select>
-        <select aria-label={isCharacter ? "Стихия" : "Тип оружия"} value={type} onChange={e => setType(e.target.value)}>
-          <option value="">{isCharacter ? "Все стихии" : "Все типы"}</option>
-          {typeOptions.map(([id, label]) => <option key={id} value={id}>{label}</option>)}
+        <select aria-label={isCharacter ? tr("Стихия") : tr("Тип оружия")} value={type} onChange={e => setType(e.target.value)}>
+          <option value="">{isCharacter ? tr("Все стихии") : tr("Все типы")}</option>
+          {typeOptions.map(([id, label]) => <option key={id} value={id}>{gameText(tr(label))}</option>)}
         </select>
-        <select aria-label="Редкость" value={rarity} onChange={e => setRarity(e.target.value)}>
-          <option value="">Любая редкость</option>
+        <select aria-label={tr("Редкость")} value={rarity} onChange={e => setRarity(e.target.value)}>
+          <option value="">{tr("Любая редкость")}</option>
           {rarityOptions.map(value => <option key={value} value={value}>{value} ★</option>)}
         </select>
       </div>
     </div>
-    {!rows.length ? <p role="status">{candidates.length ? "Ничего не найдено." : "Нет доступных целей."}</p> :
+    {!rows.length ? <p role="status">{candidates.length ? tr("Ничего не найдено.") : tr("Нет доступных целей.")}</p> :
       isCharacter ? <CharacterGrid rows={rows} catalog={catalog} name={name} favorites={[]} onSelect={onSelect} rarity={(row: GoalChoice) => rarityOf(row, catalog)} /> :
         <InventoryGrid rows={rows.map(row => ({ ...row, source_collection: "weapons" }))} items={items}
           rarities={catalog.rarities} characters={characters} avatarIcons={catalog.avatarIcons ?? {}} name={name}

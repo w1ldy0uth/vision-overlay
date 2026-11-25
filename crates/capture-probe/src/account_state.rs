@@ -34,6 +34,12 @@ impl State {
         {
             out.push(("onslaught_snapshot", snapshot));
         }
+        if command == crate::onslaught::EXALTED_RESPONSE
+            && self.uid.is_some()
+            && let Ok(Some(snapshot)) = self.onslaught.exalted_snapshot(body)
+        {
+            out.push(("onslaught_exalted_snapshot", snapshot));
+        }
         if matches!(command, 7193 | 22660 | 9233) {
             let Some(uid) = &self.uid else { return Ok(out) };
             let previous = self.profile.clone();

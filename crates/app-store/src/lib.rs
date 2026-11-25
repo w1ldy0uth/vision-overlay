@@ -24,6 +24,7 @@ use std::{
 };
 use uuid::Uuid;
 
+pub(crate) const DATABASE_SCHEMA_VERSION: i64 = 9;
 const ADAPTER: &str = "legacy-jsonl-import-v1";
 pub struct Store {
     connection: SqliteConnection,
@@ -52,7 +53,7 @@ impl Store {
                     .fetch_one(&mut connection)
                     .await?;
             ensure!(
-                version.unwrap_or(0) <= 8,
+                version.unwrap_or(0) <= DATABASE_SCHEMA_VERSION,
                 "Database schema is newer than this application"
             );
         }
@@ -207,8 +208,11 @@ async fn read_profile_state(connection: &mut SqliteConnection, profile: &str) ->
     let mut totals = BTreeMap::<u32, u64>::new();
     for r in rows {
         let collection: String = r.get("collection");
-        let v: Value = serde_json::from_str(r.get("value_json"))?;
+        let mut v: Value = serde_json::from_str(r.get("value_json"))?;
         let confirmed = r.get::<i64, _>("confirmed_in_baseline") == 1;
+        if collection == "theater" {
+            retain_theater_arcana(&mut tx, profile, &mut v).await?;
+        }
         if collection == "material_stacks" && confirmed {
             let id = v["item_id"].as_u64().context("Stored item ID missing")? as u32;
             let count = v["count"].as_u64().context("Stored count missing")?;
@@ -231,6 +235,29 @@ async fn read_profile_state(connection: &mut SqliteConnection, profile: &str) ->
     )
 }
 
+// The latest run may report fewer Arcana than an earlier run in the same season.
+async fn retain_theater_arcana(
+    tx: &mut sqlx::Transaction<'_, sqlx::Sqlite>,
+    profile: &str,
+    value: &mut Value,
+) -> Result<()> {
+    let reported = value["arcana"].as_i64().unwrap_or(0);
+    if reported >= 2 {
+        return Ok(());
+    }
+    let best: Option<i64> = sqlx::query_scalar(include_str!("theater_best_arcana.sql"))
+        .bind(profile)
+        .bind(value["schedule_id"].as_i64())
+        .bind(value["starts_unix_s"].as_i64())
+        .bind(value["ends_unix_s"].as_i64())
+        .fetch_one(&mut **tx)
+        .await?;
+    // Older decoders also reported zero when the field was missing.
+    let best = best.unwrap_or(0).max(reported);
+    value["arcana"] = json!((best > 0).then_some(best));
+    Ok(())
+}
+
 #[cfg(test)]
 mod ingest_tests;
 #[cfg(test)]
@@ -249,8 +276,15 @@ async fn write_entity(
 ) -> Result<()> {
     if let Some(value) = value {
         core::validate_entity(collection, key, value)?;
+        let value_json = if collection == "theater" {
+            let mut value = value.clone();
+            retain_theater_arcana(tx, profile, &mut value).await?;
+            serde_json::to_string(&value)?
+        } else {
+            serde_json::to_string(value)?
+        };
         sqlx::query("INSERT INTO current_entities(profile_id,collection,entity_key,value_json,confirmed_in_baseline,capture_id,epoch,source_sequence,observed_ms,revision) VALUES(?,?,?,?,1,?,?,?,?,?) ON CONFLICT(profile_id,collection,entity_key) DO UPDATE SET value_json=excluded.value_json,confirmed_in_baseline=1,capture_id=excluded.capture_id,epoch=excluded.epoch,source_sequence=excluded.source_sequence,observed_ms=excluded.observed_ms,revision=excluded.revision")
-            .bind(profile).bind(collection).bind(key).bind(serde_json::to_string(value)?).bind(capture).bind(&record.epoch).bind(record.sequence).bind(record.observed_ms).bind(revision).execute(&mut **tx).await?;
+            .bind(profile).bind(collection).bind(key).bind(value_json).bind(capture).bind(&record.epoch).bind(record.sequence).bind(record.observed_ms).bind(revision).execute(&mut **tx).await?;
     } else {
         sqlx::query(
             "DELETE FROM current_entities WHERE profile_id=? AND collection=? AND entity_key=?",
@@ -345,13 +379,13 @@ async fn apply_record(
             if !apply[&key] {
                 continue;
             }
-            if scope == "full" {
+            if scope == "full" && !(collection == "theater" && rows.contains_key("current")) {
                 sqlx::query("DELETE FROM current_entities WHERE profile_id=? AND collection=?")
                     .bind(profile)
                     .bind(collection)
                     .execute(&mut **tx)
                     .await?;
-            } else if first || scope == "unverified" {
+            } else if scope != "full" && (first || scope == "unverified") {
                 sqlx::query("UPDATE current_entities SET confirmed_in_baseline=0 WHERE profile_id=? AND collection=?").bind(profile).bind(collection).execute(&mut **tx).await?;
             }
             for (key, value) in rows {

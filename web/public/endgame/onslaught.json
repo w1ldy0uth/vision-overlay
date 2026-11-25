@@ -1,0 +1,36 @@
+{
+  "schema_version": 1,
+  "schedule_id": 5269013,
+  "starts_server_time": "2026-11-11 10:00:00",
+  "ends_server_time_inclusive": "2026-12-15 03:59:59",
+  "name": "Морская баталия",
+  "sources": {
+    "schedule": "https://www.hoyolab.com/article/47375132",
+    "bosses": "https://static.nanoka.cc/gi/7.2/en/leyline/5269013.json",
+    "localization_revision": "a311cd77d7dafbd2bedc7d3cac4e986c6125b586"
+  },
+  "bosses": [
+    {
+      "id": 1013041,
+      "name": "Удерживающий волны",
+      "icon": "UI_MonsterIcon_Volkodlak_Whale",
+      "forms": ["Обычная форма", "Рвение", "Яростный бросок"],
+      "advantages": ["Звёздное сияние", "Электро"]
+    },
+    {
+      "id": 1006043,
+      "name": "Император огня и железа",
+      "icon": "UI_MonsterIcon_HermitCrab_Primo",
+      "forms": ["Обычная форма", "Налёт", "Поход"],
+      "advantages": ["Гидро"],
+      "disadvantages": ["Пиро"]
+    },
+    {
+      "id": 1008041,
+      "name": "Лучезарный лунный геккон",
+      "icon": "UI_MonsterIcon_Magbeast_Gecko",
+      "forms": ["Обычная форма", "Усиленная форма", "Переплетённые клыки"],
+      "advantages": ["Гео", "Лечение"]
+    }
+  ]
+}

@@ -1,13 +1,14 @@
+import { tr, uiLocale } from "./i18n.mjs";
 import { nextUpgrades } from "./upgrades.mjs";
 import { ItemIcon } from "./InventoryViews";
 
-const number = (n: number) => n.toLocaleString("ru-RU");
+const number = (n: number) => n.toLocaleString(uiLocale);
 const status: Record<string, string> = {
-  ready: "Ресурсов достаточно",
-  saved: "Достаточно по сохранённым данным",
-  shortage: "Не хватает ресурсов по полученным данным",
-  unknown: "Запасы подтверждены не полностью",
-  locked: "Сначала выполните требования",
+  ready: tr("Ресурсов достаточно"),
+  saved: tr("Достаточно по сохранённым данным"),
+  shortage: tr("Не хватает ресурсов по полученным данным"),
+  unknown: tr("Запасы подтверждены не полностью"),
+  locked: tr("Сначала выполните требования"),
 };
 export function NextUpgrades({
   values,
@@ -26,11 +27,11 @@ export function NextUpgrades({
   if (!next) return null;
   const title = (s: any) =>
     s.kind === "ascension"
-      ? `Возвышение ${s.from} → ${s.to}`
+      ? tr("Возвышение {0} → {1}", s.from, s.to)
       : s.kind === "talent"
-        ? `Базовый уровень ${s.from} → ${s.to}`
-        : `Уровень ${s.from} → ${s.to}`;
-  const itemName = (id: number) => catalog.names[String(id)] ?? `Предмет ${id}`;
+        ? tr("Базовый уровень {0} → {1}", s.from, s.to)
+        : tr("Уровень {0} → {1}", s.from, s.to);
+  const itemName = (id: number) => catalog.names[String(id)] ?? tr("Предмет {0}", id);
   const materials = (items: any[]) => (
     <ul className="progression-materials">
       {items.map((m: any) => (
@@ -43,8 +44,7 @@ export function NextUpgrades({
             {itemName(m.id)} × {number(m.count)}
             {m.owned !== undefined && (
               <small className="muted">
-                {" "}
-                · есть {m.owned === null ? "неизвестно" : number(m.owned)}
+                {" "}{tr("· есть ")}{m.owned === null ? tr("неизвестно") : number(m.owned)}
               </small>
             )}
           </span>
@@ -61,60 +61,52 @@ export function NextUpgrades({
         </p>
       ))}
       {s.kind === "ascension" && (
-        <p className="muted">
-          Уровень от {s.requiredLevel}, ранг приключений от{" "}
-          {s.requiredAdventureRank}; новый предел — {s.maxLevel}.
+        <p className="muted">{tr("Уровень от ")}{s.requiredLevel}{tr(", ранг приключений от")}{" "}
+          {s.requiredAdventureRank}{tr("; новый предел — ")}{s.maxLevel}.
         </p>
       )}
       {s.kind === "talent" && (
-        <p className="muted">
-          Нужно возвышение {s.requiredAscension}, уровень от{" "}
-          {s.requiredLevel ?? "неизвестен"}. Бонусы созвездий в цену не входят.
-        </p>
+        <p className="muted">{tr("Нужно возвышение ")}{s.requiredAscension}{tr(", уровень от")}{" "}
+          {s.requiredLevel ?? tr("неизвестен")}{tr(". Бонусы созвездий в цену не входят.")}</p>
       )}
       {s.kind === "level" && (
         <>
-          <p>
-            Опыт: {number(s.currentExp)} / {number(s.requiredExp)} · до
-            следующего уровня {number(s.neededExp)}.
+          <p>{tr("Опыт: ")}{number(s.currentExp)} / {number(s.requiredExp)}{tr(" · до следующего уровня ")}{number(s.neededExp)}.
           </p>
           <p className="muted">
             {s.fromStock
-              ? "Вариант из полученных запасов"
-              : "Пример расхода материалов"}
-            : {number(s.suppliedExp)} опыта. Результат: ур. {s.resultLevel}
-            {s.resultExp ? `, опыт ${number(s.resultExp)}` : ""}.
+              ? tr("Вариант из полученных запасов")
+              : tr("Пример расхода материалов")}
+            : {number(s.suppliedExp)}{tr(" опыта. Результат: ур. ")}{s.resultLevel}
+            {s.resultExp ? tr(", опыт {0}", number(s.resultExp)) : ""}.
           </p>
         </>
       )}
       <p>
-        <strong>{number(s.mora)} моры</strong>
+        <strong>{number(s.mora)}{tr(" моры")}</strong>
         <small className="muted">
-          {" "}
-          · есть {s.moraOwned === null ? "неизвестно" : number(s.moraOwned)}
+          {" "}{tr("· есть ")}{s.moraOwned === null ? tr("неизвестно") : number(s.moraOwned)}
         </small>
       </p>
       {s.materialsAvailable === false ? (
-        <p className="muted">Материалы не определены в источнике.</p>
+        <p className="muted">{tr("Материалы не определены в источнике.")}</p>
       ) : (
         materials(s.materials)
       )}
       {!!s.returnedMaterials?.length && (
         <>
-          <p>Возврат после достижения предела:</p>
+          <p>{tr("Возврат после достижения предела:")}</p>
           {materials(s.returnedMaterials)}
         </>
       )}
       {!!s.lostExp && (
-        <p className="footnote">
-          На пределе не будет использовано {number(s.lostExp)} опыта.
-        </p>
+        <p className="footnote">{tr("На пределе не будет использовано ")}{number(s.lostExp)}{tr(" опыта.")}</p>
       )}
     </>
   );
   return (
     <section className="next-upgrades">
-      {!only && <h3>Следующие улучшения</h3>}
+      {!only && <h3>{tr("Следующие улучшения")}</h3>}
       {only !== "talent" &&
         (["max", "unknown"].includes(next.progress.kind) ? (
           <p className="muted">{next.progress.reason}</p>
@@ -131,14 +123,14 @@ export function NextUpgrades({
             <details key={t.skillId}>
               <summary>
                 {only === "talent"
-                  ? "Следующее улучшение"
+                  ? tr("Следующее улучшение")
                   : (catalog.skillNames[t.skillId] ??
-                    `Навык ${t.skillId}`)}{" "}
+                    tr("Навык {0}", t.skillId))}{" "}
                 ·{" "}
                 {t.kind === "max"
-                  ? "максимум"
+                  ? tr("максимум")
                   : t.kind === "unknown"
-                    ? "нет данных"
+                    ? tr("нет данных")
                     : `${t.from} → ${t.to}`}
               </summary>
               {["max", "unknown"].includes(t.kind) ? (
@@ -149,11 +141,7 @@ export function NextUpgrades({
             </details>
           ))}
       {!only && (
-        <p className="footnote">
-          Расчёт по последним данным профиля, без бонусов событий. Для повышения
-          уровня предложены книги или руда; оружие в качестве материала не
-          расходуется.
-        </p>
+        <p className="footnote">{tr("Расчёт по последним данным профиля, без бонусов событий. Для повышения уровня предложены книги или руда; оружие в качестве материала не расходуется.")}</p>
       )}
     </section>
   );

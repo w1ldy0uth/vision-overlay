@@ -1,3 +1,4 @@
+import { tr, uiLocale } from "./i18n.mjs";
 import avatarRarities from './data/wish-avatar-rarities.json' with {type:'json'};
 
 // Local capture identities remain separate from IDs owned by the history API.
@@ -9,9 +10,9 @@ export function wishRecords(data, catalog) {
       catalog.rarities?.[r.item_id]??avatarRarities.rows[r.item_id];
     const ms=Number(r.observed_ms);
     return {...r,id:`live:${r.live_id}`,live:true,rank_type:stars?String(stars):'',
-      name:catalog.avatarNames?.[r.item_id]??catalog.names?.[r.item_id]??`Предмет ${r.item_id}`,
+      name:catalog.avatarNames?.[r.item_id]??catalog.names?.[r.item_id]??tr("Предмет {0}", r.item_id),
       time:Number.isInteger(zone)?new Date(ms+zone*3600000).toISOString().slice(0,19).replace('T',' '):'',
-      display_time:new Date(ms).toLocaleString('ru-RU'),lang:'ru'};
+      display_time:new Date(ms).toLocaleString(uiLocale),lang:'ru'};
   });
   return [...local,...data.records];
 }

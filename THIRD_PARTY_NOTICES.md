@@ -37,6 +37,11 @@ metadata binaries. Source attribution is not a grant of ownership over the
 underlying game content: game names, text, artwork and trademarks remain the
 property of their respective owners, including HoYoverse.
 
+The web client includes localized reference text and a snapshot of public
+HoYoLAB map labels, coordinates, and floor metadata. Map tiles, marker icons,
+and floor images load from HoYoverse's public CDN. Public references for the
+included endgame schedules are recorded alongside each schedule.
+
 Artwork is fetched at runtime from Enka.Network and PathOfGenshin/resources;
 it is not included in the source release or initial portable archive. Fetched
 images are cached locally. Vision Overlay is an unofficial companion and is

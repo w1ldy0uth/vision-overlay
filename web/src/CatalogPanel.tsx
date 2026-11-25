@@ -1,3 +1,4 @@
+import { tr, uiLocale } from "./i18n.mjs";
 import { useEffect, useRef, useState } from "react";
 import { get } from "./api";
 const controls = {
@@ -64,43 +65,35 @@ export function CatalogPanel({ onChanged }: { onChanged: () => void }) {
   const blocked = busy || status?.busy;
   const version = (v: any) => (
     <>
-      <strong title={v?.manifest.revision}>
-        Ревизия {short(v?.manifest.revision)}
+      <strong title={v?.manifest.revision}>{tr("Ревизия ")}{short(v?.manifest.revision)}
       </strong>
       <p className="muted">
-        {v?.counts.items?.toLocaleString("ru-RU")} предметов ·{" "}
-        {v?.counts.characters} записей персонажей ·{" "}
+        {v?.counts.items?.toLocaleString(uiLocale)}{tr(" предметов ·")}{" "}
+        {v?.counts.characters}{tr(" записей персонажей ·")}{" "}
         {v?.counts.achievements_playable != null
-          ? `${v.counts.achievements_playable} игровых достижений · ${v.counts.achievements_excluded} неиспользуемых/исключённых записей`
-          : `${v?.counts.achievements} определений достижений (включая неиспользуемые)`}
+          ? tr("{0} игровых достижений · {1} неиспользуемых/исключённых записей", v.counts.achievements_playable, v.counts.achievements_excluded)
+          : tr("{0} определений достижений (включая неиспользуемые)", v?.counts.achievements)}
       </p>
       {v?.counts.avatar_promotion_paths != null && (
-        <p className="muted">
-          Стоимости: {v.counts.avatar_promotion_paths} путей возвышения
-          персонажей · {v.counts.weapon_promotion_paths} путей оружия ·{" "}
-          {v.counts.talent_cost_groups} схем талантов
-        </p>
+        <p className="muted">{tr("Стоимости: ")}{v.counts.avatar_promotion_paths}{tr(" путей возвышения персонажей · ")}{v.counts.weapon_promotion_paths}{tr(" путей оружия ·")}{" "}
+          {v.counts.talent_cost_groups}{tr(" схем талантов")}</p>
       )}
       <small className="muted">
-        {v?.manifest.language?.toUpperCase()} · формат{" "}
+        {v?.manifest.language?.toUpperCase()}{tr(" · формат")}{" "}
         {v?.manifest.format_version} ·{" "}
         {v?.manifest.source === "bundled"
-          ? "Встроенная версия"
+          ? tr("Встроенная версия")
           : "Dimbreath / AnimeGameData"}
       </small>
     </>
   );
   return (
     <section className="panel catalog-panel">
-      <h2>Справочник игровых данных</h2>
-      <p className="muted">
-        Названия, иконки, категории и характеристики обновляются отдельно от
-        приложения. Сначала новая версия скачивается и проверяется, затем её
-        можно применить.
-      </p>
+      <h2>{tr("Справочник игровых данных")}</h2>
+      <p className="muted">{tr("Названия, иконки, категории и характеристики обновляются отдельно от приложения. Сначала новая версия скачивается и проверяется, затем её можно применить.")}</p>
       {current && (
         <div className="catalog-version">
-          <span className="eyebrow">ТЕКУЩАЯ ВЕРСИЯ</span>
+          <span className="eyebrow">{tr("ТЕКУЩАЯ ВЕРСИЯ")}</span>
           {version(current)}
         </div>
       )}
@@ -108,29 +101,21 @@ export function CatalogPanel({ onChanged }: { onChanged: () => void }) {
         <button
           disabled={blocked || !current}
           onClick={() =>
-            run("prepare", {}, "Новая версия проверена и готова к просмотру.")
+            run("prepare", {}, tr("Новая версия проверена и готова к просмотру."))
           }
-        >
-          Проверить обновления
-        </button>
+        >{tr("Проверить обновления")}</button>
         <button
           disabled={blocked || !status?.previous}
           onClick={() =>
             run(
               "rollback",
               { expected_active: current.id },
-              "Предыдущая рабочая версия восстановлена.",
+              tr("Предыдущая рабочая версия восстановлена."),
             )
           }
-        >
-          Вернуть предыдущую версию
-        </button>
-        <a href="/api/v1/catalog/export" download="VisionOverlay.visioncatalog">
-          Сохранить текущую версию
-        </a>
-        <button disabled={blocked} onClick={() => file.current?.click()}>
-          Загрузить из файла
-        </button>
+        >{tr("Вернуть предыдущую версию")}</button>
+        <a href="/api/v1/catalog/export" download="VisionOverlay.visioncatalog">{tr("Сохранить текущую версию")}</a>
+        <button disabled={blocked} onClick={() => file.current?.click()}>{tr("Загрузить из файла")}</button>
         <input
           ref={file}
           type="file"
@@ -141,13 +126,13 @@ export function CatalogPanel({ onChanged }: { onChanged: () => void }) {
             e.target.value = "";
             if (f) {
               if (f.size > 32 * 1024 * 1024) {
-                setError("Файл справочника превышает 32 МиБ.");
+                setError(tr("Файл справочника превышает 32 МиБ."));
                 return;
               }
               await run(
                 "import",
                 await f.text(),
-                "Файл проверен и готов к просмотру.",
+                tr("Файл проверен и готов к просмотру."),
                 true,
               );
             }
@@ -155,42 +140,32 @@ export function CatalogPanel({ onChanged }: { onChanged: () => void }) {
         />
       </div>
       <details className="catalog-advanced">
-        <summary>Выбрать конкретную ревизию</summary>
-        <p className="muted">
-          Для воспроизводимой проверки можно указать полный идентификатор
-          ревизии источника.
-        </p>
+        <summary>{tr("Выбрать конкретную ревизию")}</summary>
+        <p className="muted">{tr("Для воспроизводимой проверки можно указать полный идентификатор ревизии источника.")}</p>
         <div className="catalog-actions">
           <input
-            aria-label="Ревизия справочника"
+            aria-label={tr("Ревизия справочника")}
             value={revision}
             onChange={(e) => setRevision(e.target.value.trim())}
-            placeholder="40 символов: a–f, 0–9"
+            placeholder={tr("40 символов: a–f, 0–9")}
             maxLength={40}
           />
           <button
             disabled={blocked || !/^[a-f0-9]{40}$/.test(revision)}
             onClick={() =>
-              run("prepare", { revision }, "Выбранная ревизия проверена.")
+              run("prepare", { revision }, tr("Выбранная ревизия проверена."))
             }
-          >
-            Подготовить ревизию
-          </button>
+          >{tr("Подготовить ревизию")}</button>
         </div>
       </details>
       {blocked && (
-        <p role="status">
-          Обработка справочника… Текущая версия продолжает работать.
-        </p>
+        <p role="status">{tr("Обработка справочника… Текущая версия продолжает работать.")}</p>
       )}
       {connectionError && (
-        <div className="banner warn" role="status">
-          Не удалось обновить состояние справочника. Повторяем подключение…
-        </div>
+        <div className="banner warn" role="status">{tr("Не удалось обновить состояние справочника. Повторяем подключение…")}</div>
       )}
       {error && (
-        <div className="banner error" role="alert">
-          Обновление не применено. {error}
+        <div className="banner error" role="alert">{tr("Обновление не применено. ")}{error}
         </div>
       )}
       {!error && status?.last_error && (
@@ -201,68 +176,52 @@ export function CatalogPanel({ onChanged }: { onChanged: () => void }) {
       {message && <p role="status">{message}</p>}
       {candidate && (
         <div className="catalog-candidate">
-          <span className="eyebrow">ПОДГОТОВЛЕННАЯ ВЕРСИЯ</span>
+          <span className="eyebrow">{tr("ПОДГОТОВЛЕННАЯ ВЕРСИЯ")}</span>
           {version(candidate.version)}
           <dl className="catalog-changes">
             {Object.entries({
-              names: "Названия предметов",
-              items: "Карточки предметов",
-              materials: "Категории материалов",
-              avatarNames: "Имена персонажей",
-              skillNames: "Названия навыков",
-              achievements: "Достижения",
+              names: tr("Названия предметов"),
+              items: tr("Карточки предметов"),
+              materials: tr("Категории материалов"),
+              avatarNames: tr("Имена персонажей"),
+              skillNames: tr("Названия навыков"),
+              achievements: tr("Достижения"),
             }).map(([key, label]) => {
               const delta = candidate.changes?.[key];
               return delta &&
                 (delta.added || delta.removed || delta.changed) ? (
                 <div key={key}>
                   <dt>{label}</dt>
-                  <dd>
-                    Добавлено: {delta.added} · изменено: {delta.changed} ·
-                    удалено: {delta.removed}
+                  <dd>{tr("Добавлено: ")}{delta.added}{tr(" · изменено: ")}{delta.changed}{tr(" · удалено: ")}{delta.removed}
                   </dd>
                 </div>
               ) : null;
             })}
             {candidate.changes?.stat_tables_changed && (
               <div>
-                <dt>Характеристики артефактов</dt>
-                <dd>Таблицы обновлены</dd>
+                <dt>{tr("Характеристики артефактов")}</dt>
+                <dd>{tr("Таблицы обновлены")}</dd>
               </div>
             )}
           </dl>
           {candidate.changes?.talent_links_changed && (
-            <p className="muted">
-              Обновлены связи навыков, созвездий и типы персонажей.
-            </p>
+            <p className="muted">{tr("Обновлены связи навыков, созвездий и типы персонажей.")}</p>
           )}
           {candidate.changes?.progression_changed && (
-            <p className="muted">
-              Обновлены материалы, мора и требования улучшений.
-            </p>
+            <p className="muted">{tr("Обновлены материалы, мора и требования улучшений.")}</p>
           )}
           {candidate.changes?.profile_presentation_changed && (
-            <p className="muted">
-              Обновлены аватарки профиля и пороги опыта приключений.
-            </p>
+            <p className="muted">{tr("Обновлены аватарки профиля и пороги опыта приключений.")}</p>
           )}
           {candidate.changes?.crafting_changed && (
-            <p className="muted">
-              Обновлены гарантированные рецепты крафта, стоимость и требования
-              ранга.
-            </p>
+            <p className="muted">{tr("Обновлены гарантированные рецепты крафта, стоимость и требования ранга.")}</p>
           )}
           {candidate.changes?.leveling_changed && (
-            <p className="muted">
-              Обновлены таблицы опыта, цена повышения уровней и материалы опыта.
-            </p>
+            <p className="muted">{tr("Обновлены таблицы опыта, цена повышения уровней и материалы опыта.")}</p>
           )}
-          <p>
-            Проверены контрольные суммы, формат и связи справочника. Данные
-            аккаунтов останутся на месте.
-          </p>
+          <p>{tr("Проверены контрольные суммы, формат и связи справочника. Данные аккаунтов останутся на месте.")}</p>
           {candidate.unchanged ? (
-            <p className="muted">Содержимое совпадает с текущей версией.</p>
+            <p className="muted">{tr("Содержимое совпадает с текущей версией.")}</p>
           ) : (
             <button
               disabled={blocked || candidate.base_active !== current?.id}
@@ -270,26 +229,18 @@ export function CatalogPanel({ onChanged }: { onChanged: () => void }) {
                 run(
                   "activate",
                   { id: candidate.version.id, expected_active: current.id },
-                  "Справочник применён. Открытые вкладки подхватят его автоматически.",
+                  tr("Справочник применён. Открытые вкладки подхватят его автоматически."),
                 )
               }
-            >
-              Применить подготовленную версию
-            </button>
+            >{tr("Применить подготовленную версию")}</button>
           )}
           {candidate.base_active !== current?.id && (
-            <p className="muted">
-              Рабочая версия уже изменилась. Подготовьте обновление заново.
-            </p>
+            <p className="muted">{tr("Рабочая версия уже изменилась. Подготовьте обновление заново.")}</p>
           )}
         </div>
       )}
       {status?.previous && (
-        <p className="footnote">
-          Для отката доступна ревизия {short(status.previous.manifest.revision)}
-          . Приложение использует последнюю рабочую версию при ошибке
-          обновления.
-        </p>
+        <p className="footnote">{tr("Для отката доступна ревизия ")}{short(status.previous.manifest.revision)}{tr(". Приложение использует последнюю рабочую версию при ошибке обновления.")}</p>
       )}
     </section>
   );

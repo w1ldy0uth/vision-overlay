@@ -814,8 +814,8 @@ async fn capture(
                                     && let Ok(snapshot)=abyss::snapshot(body) {
                                     output.emit("abyss_snapshot",snapshot)?;
                                 }
-                                if direction.name()=="incoming" && command.command_id==theater::COMMAND
-                                    && let Ok(snapshot)=theater::snapshot(body) {
+                                if direction.name()=="incoming" && matches!(command.command_id,theater::LOGIN_RESPONSE | theater::SCREEN_RESPONSE)
+                                    && let Ok(snapshot)=theater::snapshot(command.command_id,body) {
                                     output.emit("theater_snapshot",snapshot)?;
                                 }
                                 match profile_state.apply(direction.name()=="incoming",command.command_id,body) {

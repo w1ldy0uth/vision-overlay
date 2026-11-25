@@ -1,12 +1,13 @@
+import { tr } from "./i18n.mjs";
 import { talentLevels } from "./talents.mjs";
 const names = {
-  Fire: "Пиро",
-  Water: "Гидро",
-  Wind: "Анемо",
-  Ice: "Крио",
-  Rock: "Гео",
-  Electric: "Электро",
-  Grass: "Дендро",
+  Fire: tr("Пиро"),
+  Water: tr("Гидро"),
+  Wind: tr("Анемо"),
+  Ice: tr("Крио"),
+  Rock: tr("Гео"),
+  Electric: tr("Электро"),
+  Grass: tr("Дендро"),
 };
 export function isTraveler(v) {
   return [10000005, 10000007].includes(v.avatar_id);
@@ -14,7 +15,7 @@ export function isTraveler(v) {
 export function elementName(depot, catalog) {
   const skill = catalog.skillDepots?.[String(depot)]?.energySkill;
   const element = catalog.skillMetadata?.[String(skill)]?.element;
-  return names[element] ?? (skill ? `Набор ${depot}` : "Без стихии");
+  return names[element] ?? (skill ? tr("Набор {0}", depot) : tr("Без стихии"));
 }
 export function travelerSets(v, catalog, data) {
   if (!isTraveler(v)) return [];

@@ -1,3 +1,4 @@
+import { tr } from "./i18n.mjs";
 import { useState, useRef, useEffect, useId } from "react";
 import { createPortal } from "react-dom";
 export function TooltipButton({
@@ -7,6 +8,8 @@ export function TooltipButton({
   children,
   className,
   onClick,
+  actionHref,
+  actionLabel,
 }: any) {
   const trigger = useRef<HTMLButtonElement>(null),
     hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -77,8 +80,9 @@ export function TooltipButton({
         onMouseEnter={show}
         onMouseLeave={hide}
         onFocus={show}
-        onBlur={() => setTooltip(null)}
-        onClick={(e) => {
+        onBlur={() => actionHref ? hide() : setTooltip(null)}
+        onKeyDown={e => { if (actionHref && e.key === "Escape") setTooltip(null); }}
+        onClick={() => {
           if (onClick) {
             setTooltip(null);
             onClick();
@@ -99,9 +103,11 @@ export function TooltipButton({
           >
             <strong>{entry?.name ?? fallback}</strong>
             {content ?? <p>
-              {entry?.description?.replaceAll("{TIMEZONE}", "время сервера") ??
-                "Описание отсутствует в текущем справочнике."}
+              {entry?.description?.replaceAll("{TIMEZONE}", tr("время сервера")) ??
+                tr("Описание отсутствует в текущем справочнике.")}
             </p>}
+            {actionHref && <a className="cycle-tooltip-link" href={actionHref}
+              onClick={() => setTooltip(null)}>{actionLabel}</a>}
           </div>,
           document.body,
         )}

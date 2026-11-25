@@ -121,6 +121,7 @@ pub fn router(state: ApiState) -> Router {
         .route("/api/v1/profiles/{id}/inventory/totals",get(material_totals))
         .route("/api/v1/profiles/{id}/characters",get(characters))
         .route("/api/v1/profiles/{id}/events",get(history))
+        .route("/api/v1/profiles/{id}/planner-presets",get(planner::presets).post(planner::save_preset).layer(DefaultBodyLimit::max(4096)))
         .route("/api/v1/profiles/{id}/goals",get(planner::list).post(planner::save).layer(DefaultBodyLimit::max(16384)))
         .route("/api/v1/profiles/{id}/wishes/sync",post(wishes::sync).layer(DefaultBodyLimit::max(1024)))
         .route("/api/v1/profiles/{id}/wishes",get(wishes::list).post(wishes::import).layer(DefaultBodyLimit::max(32 * 1024 * 1024)))
@@ -193,7 +194,7 @@ async fn boundary(State(s): State<ApiState>, req: Request, next: Next) -> Respon
         .insert("x-content-type-options", "nosniff".parse().unwrap());
     response.headers_mut().insert(
         header::CONTENT_SECURITY_POLICY,
-        (if web_resource {"default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; connect-src 'self'; font-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'"} else {"default-src 'none'; frame-ancestors 'none'; base-uri 'none'"})
+        (if web_resource {"default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' https://act-webstatic.hoyoverse.com/map_manage/ https://upload-static.hoyoverse.com/map_manage/ https://act.hoyoverse.com/map_manage/ https://uploadstatic.hoyoverse.com/ys-obc/ https://act-upload.hoyoverse.com/map_manage/; connect-src 'self'; font-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'"} else {"default-src 'none'; frame-ancestors 'none'; base-uri 'none'"})
             .parse()
             .unwrap(),
     );

@@ -1,22 +1,23 @@
+import { tr, uiLocale } from "./i18n.mjs";
 import { useEffect, useState } from "react";
 import { get } from "./api";
 const reasons: Record<string, string> = {
-  pinned: "Защищено пользователем",
-  active_capture: "Активный захват",
+  pinned: tr("Защищено пользователем"),
+  active_capture: tr("Активный захват"),
   recovery_or_current_state_dependency:
-    "Нужно текущим данным или точке восстановления",
-  open_delivery_checkpoint: "Доставка ещё не завершена",
-  unfinished_or_error_capture: "Незавершённый или ошибочный захват",
+    tr("Нужно текущим данным или точке восстановления"),
+  open_delivery_checkpoint: tr("Доставка ещё не завершена"),
+  unfinished_or_error_capture: tr("Незавершённый или ошибочный захват"),
   delivery_or_recording_not_finalized:
-    "Журнал или запись ещё не закрыты / не доставлены",
-  unregistered_diagnostics: "Старая диагностика требует отдельной проверки",
-  last_three_automatic_backups: "Одна из трёх последних автоматических копий",
-  manual_backup_inside: "В папке есть резервная копия",
-  unverified_backup: "Копия отсутствует или не прошла проверку",
-  missing: "Файл не найден после переноса",
+    tr("Журнал или запись ещё не закрыты / не доставлены"),
+  unregistered_diagnostics: tr("Старая диагностика требует отдельной проверки"),
+  last_three_automatic_backups: tr("Одна из трёх последних автоматических копий"),
+  manual_backup_inside: tr("В папке есть резервная копия"),
+  unverified_backup: tr("Копия отсутствует или не прошла проверку"),
+  missing: tr("Файл не найден после переноса"),
 };
 function size(bytes: number) {
-  return `${(bytes / 1024 / 1024).toLocaleString("ru-RU", { maximumFractionDigits: 1 })} МБ`;
+  return tr("{0} МБ", (bytes / 1024 / 1024).toLocaleString(uiLocale, { maximumFractionDigits: 1 }));
 }
 export function Maintenance() {
   const [plan, setPlan] = useState<any>(null),
@@ -76,7 +77,7 @@ export function Maintenance() {
       });
       setPlan(result.preview);
       setMessage(
-        `Удалено объектов: ${result.removed}. Освобождено файлами: ${size(result.freed_bytes)}.`,
+        tr("Удалено объектов: {0}. Освобождено файлами: {1}.", result.removed, size(result.freed_bytes)),
       );
     } catch (e) {
       setError(String(e));
@@ -86,22 +87,11 @@ export function Maintenance() {
   }
   return (
     <section className="account-panel">
-      <h2>Хранение и очистка данных</h2>
-      <p>
-        Храним три завершённые пригодные точки восстановления на каждый профиль.
-        Активный захват, недоставленные события и необходимые источники защищены
-        отдельно.
-      </p>
-      <p>
-        Автоматическая копия создаётся после завершения и полной доставки
-        захвата, если данные изменились. Сохраняются три последние проверенные
-        автоматические копии. Ручные копии и архивы отката не участвуют в этой
-        ротации.
-      </p>
-      <button disabled={busy} onClick={refresh}>
-        Пересчитать план очистки
-      </button>
-      {busy && <p role="status">Проверяем состояние и зависимости…</p>}
+      <h2>{tr("Хранение и очистка данных")}</h2>
+      <p>{tr("Храним три завершённые пригодные точки восстановления на каждый профиль. Активный захват, недоставленные события и необходимые источники защищены отдельно.")}</p>
+      <p>{tr("Автоматическая копия создаётся после завершения и полной доставки захвата, если данные изменились. Сохраняются три последние проверенные автоматические копии. Ручные копии и архивы отката не участвуют в этой ротации.")}</p>
+      <button disabled={busy} onClick={refresh}>{tr("Пересчитать план очистки")}</button>
+      {busy && <p role="status">{tr("Проверяем состояние и зависимости…")}</p>}
       {error && (
         <p className="banner error" role="alert">
           {error}
@@ -114,12 +104,9 @@ export function Maintenance() {
       )}
       {plan && (
         <>
-          <h2>Точки восстановления · {plan.points.length}</h2>
+          <h2>{tr("Точки восстановления · ")}{plan.points.length}</h2>
           {!plan.points.length && (
-            <p className="footnote">
-              Завершённых точек с полным набором подтверждённых разделов пока
-              нет. Неполные входы не вытесняют пригодные точки.
-            </p>
+            <p className="footnote">{tr("Завершённых точек с полным набором подтверждённых разделов пока нет. Неполные входы не вытесняют пригодные точки.")}</p>
           )}
           <div className="retention-points">
             {plan.points.map((p: any) => (
@@ -128,18 +115,13 @@ export function Maintenance() {
                   {p.uid} · {p.server_region}
                 </b>
                 <small>
-                  {new Date(Number(p.observed_ms)).toLocaleString("ru-RU")}
+                  {new Date(Number(p.observed_ms)).toLocaleString(uiLocale)}
                 </small>
               </div>
             ))}
           </div>
-          <h2>Файлы захвата и диагностики</h2>
-          <p className="footnote">
-            Ранее существовавшие папки изначально защищены. Снятие защиты
-            разрешает их участие в следующем расчёте; другие причины защиты
-            остаются в силе. Неизвестная старая диагностика автоматически не
-            удаляется.
-          </p>
+          <h2>{tr("Файлы захвата и диагностики")}</h2>
+          <p className="footnote">{tr("Ранее существовавшие папки изначально защищены. Снятие защиты разрешает их участие в следующем расчёте; другие причины защиты остаются в силе. Неизвестная старая диагностика автоматически не удаляется.")}</p>
           <div className="retention-files">
             {plan.artifacts.map((a: any) => (
               <article key={a.artifact_id}>
@@ -148,20 +130,20 @@ export function Maintenance() {
                   <small>
                     {size(a.bytes)} ·{" "}
                     {a.kind === "automatic_backup"
-                      ? "Автоматическая копия"
+                      ? tr("Автоматическая копия")
                       : a.kind === "capture"
-                        ? "Захват"
-                        : "Диагностика"}
+                        ? tr("Захват")
+                        : tr("Диагностика")}
                   </small>
                   <p>
                     {a.eligible
-                      ? "Можно очистить"
+                      ? tr("Можно очистить")
                       : a.protected_reasons
                           .map(
                             (r: string) =>
                               reasons[r] ??
                               (r.startsWith("missing_or_unsafe")
-                                ? "Недоступный или небезопасный путь"
+                                ? tr("Недоступный или небезопасный путь")
                                 : r),
                           )
                           .join(" · ")}
@@ -173,14 +155,11 @@ export function Maintenance() {
                     checked={a.pinned}
                     disabled={busy}
                     onChange={(e) => pin(a.artifact_id, e.target.checked)}
-                  />
-                  Защитить
-                </label>
+                  />{tr("Защитить")}</label>
               </article>
             ))}
           </div>
-          <p>
-            Доступно к очистке: <b>{plan.eligible_count}</b> объектов ·{" "}
+          <p>{tr("Доступно к очистке: ")}<b>{plan.eligible_count}</b>{tr(" объектов ·")}{" "}
             <b>{size(plan.eligible_bytes)}</b>.
           </p>
           <label>
@@ -189,23 +168,14 @@ export function Maintenance() {
               checked={confirm}
               disabled={busy || !plan.eligible_count}
               onChange={(e) => setConfirm(e.target.checked)}
-            />{" "}
-            Удалить перечисленные доступные файлы и их устаревшие
-            диагностические записи
-          </label>
+            />{" "}{tr("Удалить перечисленные доступные файлы и их устаревшие диагностические записи")}</label>
           <p>
             <button
               disabled={busy || !confirm || !plan.eligible_count}
               onClick={apply}
-            >
-              Очистить доступные данные
-            </button>
+            >{tr("Очистить доступные данные")}</button>
           </p>
-          <p className="footnote">
-            Перед очисткой зависимости проверяются повторно. Освобождение
-            страниц внутри SQLite не обязательно сразу уменьшает размер её
-            файла; эти страницы используются последующими записями.
-          </p>
+          <p className="footnote">{tr("Перед очисткой зависимости проверяются повторно. Освобождение страниц внутри SQLite не обязательно сразу уменьшает размер её файла; эти страницы используются последующими записями.")}</p>
         </>
       )}
     </section>

@@ -55,6 +55,7 @@ pub fn collection(c: &str) -> Result<()> {
                 | "abyss"
                 | "theater"
                 | "onslaught"
+                | "onslaught_exalted"
                 | "achievements"
                 | "teams"
                 | "player_profile"
@@ -215,16 +216,10 @@ pub fn validate_entity(c: &str, key: &str, v: &Value) -> Result<()> {
             );
         }
     }
-    if c == "onslaught" {
+    if matches!(c, "onslaught" | "onslaught_exalted") {
         ensure!(
             key == "current"
                 && v["schedule_id"].as_u64().is_some_and(|id| id > 0)
-                && v["difficulty"]
-                    .as_u64()
-                    .is_some_and(|n| (1..=6).contains(&n))
-                && v["seconds"]
-                    .as_u64()
-                    .is_some_and(|n| (1..=86400).contains(&n))
                 && v["starts_unix_s"]
                     .as_u64()
                     .zip(v["ends_unix_s"].as_u64())
@@ -233,13 +228,37 @@ pub fn validate_entity(c: &str, key: &str, v: &Value) -> Result<()> {
                         && end - start <= 60 * 86400),
             "Invalid Onslaught state"
         );
+        if c == "onslaught_exalted" {
+            let mut seen = std::collections::BTreeSet::new();
+            ensure!(
+                v["avatar_ids"].as_array().is_some_and(|avatars| {
+                    (1..=16).contains(&avatars.len())
+                        && avatars.iter().all(|avatar| {
+                            avatar.as_u64().is_some_and(|id| {
+                                (10_000_001..11_000_000).contains(&id) && seen.insert(id)
+                            })
+                        })
+                }),
+                "Invalid Onslaught roster"
+            );
+        } else {
+            ensure!(
+                v["difficulty"]
+                    .as_u64()
+                    .is_some_and(|n| (1..=6).contains(&n))
+                    && v["seconds"]
+                        .as_u64()
+                        .is_some_and(|n| (1..=86400).contains(&n)),
+                "Invalid Onslaught result"
+            );
+        }
     }
     if c == "theater" {
         ensure!(
             key == "current"
                 && v["schedule_id"].as_u64().is_some_and(|id| id > 0)
                 && v["acts"].as_u64().is_some_and(|n| n <= 10)
-                && v["arcana"].as_u64().is_some_and(|n| n <= 2)
+                && (v["arcana"].is_null() || v["arcana"].as_u64().is_some_and(|n| n <= 2))
                 && (v["echo_keys"].is_null() || v["echo_keys"].as_u64().is_some_and(|n| n <= 2))
                 && v["starts_unix_s"]
                     .as_u64()
